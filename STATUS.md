@@ -1,31 +1,31 @@
-# Project Status: agents-orchestration
+# 프로젝트 상태: agents-orchestration
 
-## Current State
-The project is a functional prototype of a hierarchical agent orchestration system using LangGraph.
+## 현재 상태
+본 프로젝트는 LangGraph를 이용한 계층적 에이전트 오케스트레이션 시스템의 기능적 프로토타입입니다.
 
-### Implemented Features
-- **Hierarchical Graph Structure**: A supervisor-worker pattern where a central manager routes tasks.
-- **Supervisor Agent**: Uses structured output (`RouteResponse`) to decide whether to call the `Researcher`, the `Writer`, or `FINISH`.
-- **Researcher Agent**: A ReAct-based agent integrated with DuckDuckGo Search for real-time information gathering.
-- **Writer Agent**: A ReAct-based agent focused on synthesizing research into final summaries.
-- **Environment Management**: Configured for `uv` and `python-dotenv`.
+### 구현된 기능
+- **계층적 그래프 구조**: 중앙 관리자가 작업을 라우팅하는 Supervisor-Worker 패턴.
+- **Supervisor 에이전트**: 구조화된 출력(`RouteResponse`)을 사용하여 `Researcher`, `Writer`를 호출하거나 `FINISH`할지 결정합니다.
+- **Researcher 에이전트**: 실시간 정보 수집을 위해 DuckDuckGo Search와 통합된 ReAct 기반 에이전트.
+- **Writer 에이전트**: 연구 결과를 명확하고 간결한 요약으로 합성하는 데 집중하는 ReAct 기반 에이전트.
+- **환경 관리**: `uv` 및 `python-dotenv` 설정 완료.
 
-### Project Structure
-- `main.py`: Entry point that builds and executes the LangGraph workflow.
-- `state.py`: Defines the global `AgentState`.
-- `agents/`: Contains specialized agent logic:
-  - `supervisor.py`: Task routing and team coordination.
-  - `researcher.py`: Search and data gathering tools.
-  - `writer.py`: Content creation and summarization.
+### 프로젝트 구조
+- `main.py`: LangGraph 워크플로우를 구축하고 실행하는 엔트리 포인트.
+- `state.py`: 전역 `AgentState` 정의.
+- `agents/`: 전문 에이전트 로직 포함:
+  - `supervisor.py`: 작업 라우팅 및 팀 코디네이션.
+  - `researcher.py`: 검색 및 데이터 수집 도구.
+  - `writer.py`: 콘텐츠 생성 및 요약.
 
-## Pending / Next Steps
-- [ ] Implement robust error handling for API failures.
-- [ ] Add more specialized workers (e.g., Code Reviewer, Fact Checker).
-- [ ] Enhance shared state management (currently uses `messages` and a `data` dict).
-- [ ] Improve prompt engineering for better coordination between agents.
-- [ ] Add unit tests for individual agent nodes.
+## 향후 계획 / 다음 단계
+- [ ] API 실패에 대비한 견고한 에러 핸들링 구현.
+- [ ] 더 다양한 전문 워커 추가 (예: 코드 리뷰어, 팩트 체커).
+- [ ] 공유 상태 관리 강화 (현재는 `messages`와 `data` 딕셔너리 사용).
+- [ ] 에이전트 간 협업을 위한 프롬프트 엔지니어링 개선.
+- [ ] 개별 에이전트 노드에 대한 유닛 테스트 추가.
 
-## Environment Requirements
+## 환경 요구 사항
 - Python >= 3.11
-- OpenAI API Key (set in `.env`)
-- Dependencies managed via `uv` or `pip install -r requirements.txt`.
+- OpenAI API Key (`.env` 파일에 설정)
+- `uv` 또는 `pip install -r requirements.txt`를 통한 의존성 관리.
