@@ -7,7 +7,8 @@
 이 시스템은 **계층적 오케스트레이션(Hierarchical Orchestration)** 패턴을 사용합니다:
 1.  **Supervisor (관리자)**: 관리자 역할을 하며, 작업을 할당받아 전문 워커(Worker)들에게 라우팅합니다.
 2.  **Researcher (연구원)**: DuckDuckGo Search를 사용하여 관련 정보를 찾습니다.
-3.  **Writer (작가)**: 조사 내용을 처리하여 명확하고 전문적인 요약본으로 합성합니다.
+3.  **SQLQueryer (데이터 분석가)**: SQLite 기반의 Titanic 데이터셋을 쿼리하고 분석합니다.
+4.  **Writer (작가)**: 조사 내용 및 분석 결과를 처리하여 명확하고 전문적인 요약본으로 합성합니다.
 
 워크플로우는 순환 구조입니다: Supervisor → Worker → Supervisor. 이를 통해 관리자는 다음 단계로 진행하거나 작업을 종료하기 전에 워커의 결과물을 검토할 수 있습니다.
 

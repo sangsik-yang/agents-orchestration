@@ -5,9 +5,10 @@
 
 ### 구현된 기능
 - **계층적 그래프 구조**: 중앙 관리자가 작업을 라우팅하는 Supervisor-Worker 패턴.
-- **Supervisor 에이전트**: 구조화된 출력(`RouteResponse`)을 사용하여 `Researcher`, `Writer`를 호출하거나 `FINISH`할지 결정합니다.
+- **Supervisor 에이전트**: 구조화된 출력(`RouteResponse`)을 사용하여 `Researcher`, `Writer`, `SQLQueryer`를 호출하거나 `FINISH`할지 결정합니다.
 - **Researcher 에이전트**: 실시간 정보 수집을 위해 DuckDuckGo Search와 통합된 ReAct 기반 에이전트.
 - **Writer 에이전트**: 연구 결과를 명확하고 간결한 요약으로 합성하는 데 집중하는 ReAct 기반 에이전트.
+- **SQLQueryer 에이전트**: Titanic 데이터셋(SQLite)에 대한 구조화된 데이터 쿼리 및 분석을 수행합니다.
 - **환경 관리**: `uv` 및 `python-dotenv` 설정 완료.
 
 ### 프로젝트 구조
