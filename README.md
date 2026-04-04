@@ -1,24 +1,29 @@
 # 계층적 에이전트 오케스트레이션 (Hierarchical Agent Orchestration)
 
-**LangGraph**를 사용하여 구축된 계층적(Supervisor-Worker) 패턴의 멀티 에이전트 시스템입니다. 이 프로젝트는 연구 및 작업을 자율적으로 수행하기 위해 여러 전문 에이전트를 어떻게 조율하는지 보여줍니다.
+**LangGraph**와 **Google Gemini**를 사용하여 구축된 지능형 멀티 에이전트 시스템입니다. Supervisor-Worker 패턴을 기반으로 복잡한 작업을 자율적으로 분석하고 해결합니다.
 
-## 아키텍처
+## 주요 특징
 
-이 시스템은 **계층적 오케스트레이션(Hierarchical Orchestration)** 패턴을 사용합니다:
-1.  **Supervisor (관리자)**: 관리자 역할을 하며, 작업을 할당받아 전문 워커(Worker)들에게 라우팅합니다.
-2.  **Researcher (연구원)**: DuckDuckGo Search를 사용하여 관련 정보를 찾습니다.
-3.  **SQLQueryer (데이터 분석가)**: SQLite 기반의 Titanic 데이터셋을 쿼리하고 분석합니다.
-4.  **Writer (작가)**: 조사 내용 및 분석 결과를 처리하여 명확하고 전문적인 요약본으로 합성합니다.
+- **Supervisor-Worker 아키텍처**: 중앙 관리자 에이전트가 상황을 판단하고 가장 적합한 워커에게 구체적인 지시를 내립니다.
+- **Google Gemini 기반**: `gemini-2.0-flash` 모델을 사용하여 강력한 추론 성능을 제공합니다.
+- **전문 워커 구성**:
+    - **Researcher**: 실시간 웹 검색 (DuckDuckGo Search).
+    - **SQLQueryer**: 구조화된 데이터 분석 (SQLite, Titanic 데이터셋).
+    - **Writer**: 정보의 요약 및 합성.
+- **무한 루프 방지**: Supervisor가 워커에게 `instruction`을 명시적으로 전달하여 불필요한 반복 작업을 방지합니다.
+- **대화형 루프**: CLI 환경에서 사용자와 연속적으로 대화하며 복합적인 작업을 수행합니다.
 
-워크플로우는 순환 구조입니다: Supervisor → Worker → Supervisor. 이를 통해 관리자는 다음 단계로 진행하거나 작업을 종료하기 전에 워커의 결과물을 검토할 수 있습니다.
+## 아키텍처 흐름
+
+사용자 입력 → **Supervisor** (의사결정 및 지시) → **Worker** (작업 수행) → **Supervisor** (검토 및 다음 단계 결정) → **FINISH**
 
 ## 시작하기
 
 ### 사전 준비
 - Python 3.11+
-- [uv](https://github.com/astral-sh/uv) (권장) 또는 `pip`
+- [uv](https://github.com/astral-sh/uv) (권장)
 
-### 설치 방법
+### 설치 및 설정
 1.  저장소 클론:
     ```bash
     git clone https://github.com/sangsik-yang/agents-orchestration.git
@@ -27,31 +32,32 @@
 2.  의존성 설치:
     ```bash
     uv sync
-    # 또는
-    pip install -r requirements.txt
     ```
 3.  환경 변수 설정:
-    `.env` 파일을 생성하고 OpenAI API 키를 추가합니다:
+    `.env` 파일을 생성하고 Google API 키를 추가합니다:
     ```env
-    OPENAI_API_KEY=your_api_key_here
+    GOOGLE_API_KEY=your_api_key_here
     ```
 
-### 사용법
-메인 스크립트를 실행하여 오케스트레이션이 작동하는 것을 확인하세요:
+### 실행 방법
+1.  데이터베이스 초기화 (최초 1회):
+    ```bash
+    uv run setup_db.py
+    ```
+2.  에이전트 시스템 실행:
+    ```bash
+    uv run main.py
+    ```
+
+### 테스트 실행
+시스템의 안정성을 검증하기 위해 작성된 테스트를 실행할 수 있습니다:
 ```bash
-python main.py
+PYTHONPATH=. uv run pytest
 ```
-기본 작업은 2024년 최신 AI 돌파구를 조사하고 요약하는 것입니다.
 
-## 프로젝트 구조
-- `main.py`: 그래프 구축 및 실행 로직.
-- `state.py`: 공유 상태(State) 정의.
-- `agents/`: Supervisor, Researcher, Writer 구현체.
-- `STATUS.md`: 현재 개발 상태 및 로드맵.
-
-## 사용된 기술
-- **LangGraph**: 복잡한 에이전트 워크플로우 관리.
-- **LangChain**: LLM 통합 및 도구 호출.
-- **OpenAI GPT-4o**: 에이전트를 구동하는 기본 모델.
-- **DuckDuckGo Search**: 실시간 정보 수집.
-- **uv**: 현대적인 Python 패키지 관리.
+## 사용된 주요 기술
+- **LangGraph / LangChain**: 복잡한 에이전트 워크플로우 및 LLM 통합 관리.
+- **Google Gemini**: 고성능 생성형 AI 모델.
+- **Pandas / SQLAlchemy**: 데이터 정제 및 DB 관리.
+- **Pytest**: 유닛 및 통합 테스트 프레임워크.
+- **uv**: 현대적인 Python 패키지 관리 도구.

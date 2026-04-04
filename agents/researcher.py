@@ -1,18 +1,17 @@
 from langchain_community.tools.ddg_search import DuckDuckGoSearchRun
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 
 # Use DuckDuckGo Search
 search_tool = DuckDuckGoSearchRun()
 tools = [search_tool]
 
-def researcher_node(state, llm: ChatOpenAI):
+def researcher_node(state, llm: ChatGoogleGenerativeAI):
     """Researcher agent logic using a ReAct agent."""
-    # Create the agent that can call tools
     researcher_agent = create_react_agent(
         llm, 
         tools=tools,
-        state_modifier="You are a meticulous researcher. Your goal is to gather accurate information using your search tool."
+        prompt="You are a meticulous researcher. Your goal is to gather accurate information using your search tool."
     )
     # The agent expects a list of messages
     result = researcher_agent.invoke(state)
