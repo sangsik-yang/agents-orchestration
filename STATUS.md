@@ -5,7 +5,7 @@
 
 ### 구현된 기능
 - **계층적 그래프 구조**: 중앙 관리자(Supervisor)가 작업을 라우팅하는 Supervisor-Worker 패턴.
-- **Google Gemini 통합**: OpenAI에서 Google Gemini(`gemini-2.0-flash`)로 LLM 전환 완료.
+- **OpenRouter 통합**: Google Gemini에서 OpenRouter(`google/gemini-2.0-flash-001`)로 LLM 전환 완료.
 - **지시 기반 라우팅 (Instruction-based Routing)**: Supervisor가 워커에게 명시적인 `instruction`을 전달하여 무한 루프를 방지하고 작업의 정확도를 높임.
 - **SQLQueryer 에이전트**: SQLite 기반 Titanic 데이터셋을 분석하는 전용 워커 추가.
 - **대화형 CLI (Interactive CLI)**: 사용자와 실시간으로 대화하며 연속적인 작업을 수행하는 인터페이스 구현.

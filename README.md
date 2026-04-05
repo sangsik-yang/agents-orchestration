@@ -5,7 +5,7 @@
 ## 주요 특징
 
 - **Supervisor-Worker 아키텍처**: 중앙 관리자 에이전트가 상황을 판단하고 가장 적합한 워커에게 구체적인 지시를 내립니다.
-- **Google Gemini 기반**: `gemini-2.0-flash` 모델을 사용하여 강력한 추론 성능을 제공합니다.
+- **OpenRouter 기반**: `google/gemini-2.0-flash-001` 모델을 사용하여 강력한 추론 성능을 제공합니다.
 - **전문 워커 구성**:
     - **Researcher**: 실시간 웹 검색 (DuckDuckGo Search).
     - **SQLQueryer**: 구조화된 데이터 분석 (SQLite, Titanic 데이터셋).

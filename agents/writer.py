@@ -1,7 +1,7 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
-def writer_node(state, llm: ChatGoogleGenerativeAI):
+def writer_node(state, llm: ChatOpenAI):
     """Writer agent logic."""
     writer_agent = create_react_agent(
         llm,

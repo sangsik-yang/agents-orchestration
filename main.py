@@ -2,7 +2,7 @@ import os
 import sys
 from functools import partial
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -47,7 +47,7 @@ def run_writer(state, llm):
 def run_sql_queryer(state, llm):
     return sql_query_node(state, llm)
 
-def build_graph(llm: ChatGoogleGenerativeAI):
+def build_graph(llm: ChatOpenAI):
     """Assemble the hierarchical graph."""
     global supervisor_instance
     workflow = StateGraph(AgentState)
@@ -124,7 +124,18 @@ def run_interaction(app, initial_query=None):
                     state["messages"].extend(value["messages"])
 
 if __name__ == "__main__":
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    llm = ChatOpenAI(
+        model="stepfun/step-3.5-flash:free",
+        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+        openai_api_base="https://openrouter.ai/api/v1",
+        default_headers={
+            "HTTP-Referer": "https://github.com/sangsik-yang/agents-orchestration",
+            "X-Title": "Agents Orchestration",
+        },
+        temperature=0,
+        timeout=120
+    )
+
     app = build_graph(llm)
     
     initial_task = "Analyze the Titanic dataset: What was the survival rate of female passengers? Then summarize the finding."

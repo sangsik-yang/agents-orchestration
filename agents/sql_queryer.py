@@ -1,9 +1,9 @@
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain_community.utilities import SQLDatabase
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 import os
 
-def sql_query_node(state, llm: ChatGoogleGenerativeAI):
+def sql_query_node(state, llm: ChatOpenAI):
     """SQL Query worker using LangChain's SQL agent."""
     db = SQLDatabase.from_uri("sqlite:///titanic.db")
     
