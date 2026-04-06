@@ -4,3 +4,4 @@ langchain-openai
 duckduckgo-search
 pydantic
 python-dotenv
+colorlog

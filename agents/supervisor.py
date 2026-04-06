@@ -1,35 +1,36 @@
 import json
-from typing import Literal
+from typing import Literal, Optional
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
+from logger import logger
 
 class RouteResponse(BaseModel):
     next: Literal["Researcher", "Writer", "SQLQueryer", "FINISH"]
     instruction: str = "Proceed with the assigned task."
 
 def create_supervisor(llm: ChatOpenAI):
-    """Supervisor agent to route the conversation."""
+    """Supervisor agent to route the conversation and handle errors."""
     system_prompt = (
         "You are the manager of a research, writing, and data analysis team."
         "\nYour goal is to coordinate between the Researcher, the Writer, and the SQLQueryer."
-        "\n\nIMPORTANT:"
-        "\n- NEVER output FINISH for the first user message. You must always use at least one worker first."
-        "\n- If the user asks for data analysis on Titanic, you MUST call the SQLQueryer."
-        "\n- If the user asks for web research, you MUST call the Researcher."
-        "\n- Only output FINISH after a worker (like Writer) has provided the final summarized result to the user's satisfaction."
-        "\n\nRESPONSE FORMAT:"
+        "\n\n### ERROR RECOVERY & SELF-CORRECTION ###"
+        "\n- If the previous worker failed with an error (see the last message), you must analyze the error message."
+        "\n- Provide a specific CORRECTION INSTRUCTION to the same worker to fix the error."
+        "\n- For SQL errors, suggest fixing table names or query syntax."
+        "\n- For Search errors, suggest different keywords."
+        "\n- If a worker has failed 3 times (check messages), you MUST either try a different approach (e.g., Researcher instead of SQLQueryer) or ask the Writer to explain the limitation to the user."
+        "\n\n### WORKERS ###"
+        "\n- Researcher: Real-time web search via DuckDuckGo."
+        "\n- SQLQueryer: Titanic dataset (SQLite) analysis (Table: 'titanic')."
+        "\n- Writer: Summarizing and synthesizing findings into a final report."
+        "\n\n### RESPONSE FORMAT ###"
         "\nYou MUST respond with a valid JSON object only. No other text."
-        "\nExample: {{ \"next\": \"SQLQueryer\", \"instruction\": \"Calculate survival rates.\" }}"
-        "\n\nYOUR TASKS:"
-        "\n1. Analyze the conversation history."
-        "\n2. Determine which worker should act next."
-        "\n3. Provide a clear, specific 'instruction' for that worker."
-        "\n4. If the task is complete and a final summary is ready, set 'next' to FINISH."
-        "\n\nWORKERS:"
-        "\n- Researcher: Real-time web search."
-        "\n- SQLQueryer: Titanic dataset (SQLite) analysis."
-        "\n- Writer: Summarizing and synthesizing findings."
+        "\nExample: {{ \"next\": \"SQLQueryer\", \"instruction\": \"Calculate survival rates of children under 10.\" }}"
+        "\n\n### DECISION RULES ###"
+        "\n1. Analyze the history and 'data' provided (if any)."
+        "\n2. Determine the next worker and provide clear, specific 'instruction'."
+        "\n3. Set 'next' to FINISH only when the final summary is provided by the Writer."
     )
     
     prompt = ChatPromptTemplate.from_messages(
@@ -43,10 +44,8 @@ def create_supervisor(llm: ChatOpenAI):
         ]
     )
     
-    # Manual parsing because with_structured_output is unstable on free models
     def parse_output(ai_message):
         content = ai_message.content.strip()
-        # Handle cases where the model might wrap JSON in code blocks
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -56,10 +55,9 @@ def create_supervisor(llm: ChatOpenAI):
             data = json.loads(content)
             return RouteResponse(**data)
         except Exception as e:
-            # Fallback if parsing fails
-            print(f"Warning: Failed to parse Supervisor output: {content}. Error: {e}")
+            logger.error(f"Supervisor Parse Error: {e} | Content: {content}")
             if "FINISH" in content.upper():
                 return RouteResponse(next="FINISH", instruction="Completed.")
-            return RouteResponse(next="Writer", instruction="Synthesize the findings so far.")
+            return RouteResponse(next="Writer", instruction="Synthesize findings or explain the error.")
 
     return prompt | llm | parse_output

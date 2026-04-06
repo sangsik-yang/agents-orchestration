@@ -1,6 +1,9 @@
 import os
 import sys
+import time
 from functools import partial
+from typing import Dict, Any
+
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
@@ -12,40 +15,105 @@ from agents.supervisor import create_supervisor
 from agents.researcher import researcher_node
 from agents.writer import writer_node
 from agents.sql_queryer import sql_query_node
+from logger import (
+    logger, 
+    log_node_start, 
+    log_node_end, 
+    log_supervisor_decision, 
+    log_error
+)
 
 # Load environment variables
 load_dotenv()
 
-# Check for API key
-if not os.getenv("GOOGLE_API_KEY"):
-    print("Error: GOOGLE_API_KEY is not set.")
+# Check for API keys
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+if not OPENROUTER_API_KEY:
+    logger.error("Missing API Key: OPENROUTER_API_KEY must be set in .env")
     sys.exit(1)
 
 # Global references
 supervisor_instance = None
 
-def call_supervisor(state):
+def call_supervisor(state: AgentState) -> Dict[str, Any]:
     global supervisor_instance
-    result = supervisor_instance.invoke(state)
-    
-    # Print the supervisor's decision and instruction for easier monitoring
-    print(f"\n[Supervisor Decision]")
-    print(f"Target Agent: {result.next}")
-    print(f"Instruction : {result.instruction}")
-    
-    return {
-        "next": result.next,
-        "messages": [AIMessage(content=f"To {result.next}: {result.instruction}", name="Supervisor")]
-    }
+    try:
+        log_node_start("Supervisor")
+        
+        # Determine if we are in a retry loop
+        current_agent = state.get("next")
+        last_error = state.get("last_error")
+        
+        result = supervisor_instance.invoke(state)
+        
+        # Logic to update retry count
+        new_retry_count = state.get("retry_count", 0)
+        if result.next == current_agent and last_error:
+            new_retry_count += 1
+            logger.warning(f"⚠️ Self-Correction: Retrying {result.next} (Attempt {new_retry_count}/3)")
+        else:
+            # Reset retry count if moving to a different agent or starting fresh
+            new_retry_count = 0
+            
+        # Hard limit for retries
+        if new_retry_count > 3:
+            logger.error(f"❌ Maximum retries (3) reached for {result.next}. Redirecting to Writer.")
+            result.next = "Writer"
+            result.instruction = "Explain that the previous task failed after multiple attempts and summarize what we know."
+            new_retry_count = 0
 
-def run_researcher(state, llm):
-    return researcher_node(state, llm)
+        log_supervisor_decision(result.next, result.instruction)
+        
+        return {
+            "next": result.next,
+            "retry_count": new_retry_count,
+            "last_error": None, # Clear error after supervisor handled it
+            "messages": [AIMessage(content=f"To {result.next}: {result.instruction}", name="Supervisor")]
+        }
+    except Exception as e:
+        log_error("Supervisor", str(e))
+        raise
 
-def run_writer(state, llm):
-    return writer_node(state, llm)
+def run_researcher(state: AgentState, llm: ChatOpenAI):
+    log_node_start("Researcher")
+    try:
+        res = researcher_node(state, llm)
+        log_node_end("Researcher")
+        return res
+    except Exception as e:
+        log_error("Researcher", str(e))
+        return {
+            "messages": [HumanMessage(content=f"Error in Researcher: {str(e)}", name="System")],
+            "last_error": str(e)
+        }
 
-def run_sql_queryer(state, llm):
-    return sql_query_node(state, llm)
+def run_writer(state: AgentState, llm: ChatOpenAI):
+    log_node_start("Writer")
+    try:
+        res = writer_node(state, llm)
+        log_node_end("Writer")
+        return res
+    except Exception as e:
+        log_error("Writer", str(e))
+        return {
+            "messages": [HumanMessage(content=f"Error in Writer: {str(e)}", name="System")],
+            "last_error": str(e)
+        }
+
+def run_sql_queryer(state: AgentState, llm: ChatOpenAI):
+    log_node_start("SQLQueryer")
+    try:
+        res = sql_query_node(state, llm)
+        log_node_end("SQLQueryer")
+        return res
+    except Exception as e:
+        log_error("SQLQueryer", str(e))
+        # We pass the error back to the supervisor to let it decide what to do
+        return {
+            "messages": [HumanMessage(content=f"Error in SQLQueryer: {str(e)}. Please fix the query or table name.", name="System")],
+            "last_error": str(e)
+        }
 
 def build_graph(llm: ChatOpenAI):
     """Assemble the hierarchical graph."""
@@ -79,24 +147,28 @@ def build_graph(llm: ChatOpenAI):
     return workflow.compile()
 
 def run_interaction(app, initial_query=None):
-    """Run an interactive loop for the agent system."""
+    """Run an interactive loop with streaming visual feedback and error recovery."""
     state = {
         "messages": [],
         "next": "Supervisor",
-        "data": {}
+        "data": {},
+        "retry_count": 0,
+        "last_error": None
     }
     
-    print("--- Hierarchical Agent System Ready ---")
+    print("\n" + "="*50)
+    print("🚀 Hierarchical Agent System Ready (Self-Correction Enabled)")
+    print("="*50 + "\n")
     
     is_first_run = True
     while True:
         if is_first_run and initial_query:
             user_input = initial_query
             is_first_run = False
-            print(f"\n[Initial Task]: {user_input}")
+            print(f"User Query: {user_input}")
         else:
             try:
-                user_input = input("\nUser (type 'exit' to quit): ")
+                user_input = input("\nUser > ")
                 if user_input.lower() in ["exit", "quit", "q"]:
                     break
             except EOFError:
@@ -106,22 +178,44 @@ def run_interaction(app, initial_query=None):
             continue
 
         state["messages"].append(HumanMessage(content=user_input))
+        state["retry_count"] = 0 # Reset for new user input
         
-        # Stream the graph execution
-        for event in app.stream(state, {"recursion_limit": 20}):
-            for key, value in event.items():
-                if key == "Supervisor":
-                    # Supervisor info is already printed in call_supervisor function
-                    continue
-                
-                print(f"\n[Node: {key}]")
-                if "messages" in value:
-                    content = value['messages'][-1].content
-                    print(f"Result: {content[:1000]}...")
-                
-                # Update state messages for persistence
-                if "messages" in value:
-                    state["messages"].extend(value["messages"])
+        print("\n" + "-"*30)
+        print("⚙️ Processing...")
+        
+        try:
+            last_agent_output = ""
+            for event in app.stream(state, {"recursion_limit": 50}):
+                for node_name, value in event.items():
+                    if node_name == "Supervisor":
+                        continue
+                    
+                    # Update state from node output
+                    if "messages" in value:
+                        state["messages"].extend(value["messages"])
+                        last_agent_output = value['messages'][-1].content
+                    
+                    if "data" in value:
+                        state["data"].update(value.get("data", {}))
+                    
+                    if "retry_count" in value:
+                        state["retry_count"] = value["retry_count"]
+                    
+                    if "last_error" in value:
+                        state["last_error"] = value["last_error"]
+                        print(f"  └── ⚠️ {node_name} failed. Attempting self-correction...")
+                    else:
+                        print(f"  └── 🤖 {node_name} finished successfully.")
+                        state["last_error"] = None
+            
+            print("-"*30)
+            print("\n✨ FINAL RESPONSE:")
+            print(last_agent_output)
+            print("\n" + "="*50)
+                        
+        except Exception as e:
+            logger.error(f"Fatal Error: {e}")
+            print(f"\n❌ A fatal error occurred: {e}")
 
 if __name__ == "__main__":
     llm = ChatOpenAI(
