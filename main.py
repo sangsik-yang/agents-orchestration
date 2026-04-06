@@ -218,6 +218,14 @@ def run_interaction(app, initial_query=None):
             print(f"\n❌ A fatal error occurred: {e}")
 
 if __name__ == "__main__":
+    # Check LangSmith Tracing
+    tracing_enabled = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
+    if tracing_enabled:
+        project_name = os.getenv("LANGCHAIN_PROJECT", "default")
+        logger.info(f"🔍 LangSmith Tracing is ENABLED (Project: {project_name})")
+    else:
+        logger.warning("🔍 LangSmith Tracing is DISABLED (Set LANGCHAIN_TRACING_V2=true in .env)")
+
     llm = ChatOpenAI(
         model="stepfun/step-3.5-flash:free",
         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
