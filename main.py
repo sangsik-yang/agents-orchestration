@@ -1,8 +1,7 @@
+import argparse
 import os
-import sys
-import time
 from functools import partial
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -26,15 +25,41 @@ from logger import (
 # Load environment variables
 load_dotenv()
 
-# Check for API keys
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-if not OPENROUTER_API_KEY:
-    logger.error("Missing API Key: OPENROUTER_API_KEY must be set in .env")
-    sys.exit(1)
+DEFAULT_SMOKE_QUERY = (
+    "Analyze the Titanic dataset: What was the survival rate of female passengers? "
+    "Then summarize the finding."
+)
 
 # Global references
 supervisor_instance = None
+
+def create_llm() -> ChatOpenAI:
+    """Create the OpenRouter-backed chat model."""
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    if not openrouter_api_key:
+        raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
+
+    return ChatOpenAI(
+        model="z-ai/glm-4.5-air:free",
+        openai_api_key=openrouter_api_key,
+        openai_api_base="https://openrouter.ai/api/v1",
+        default_headers={
+            "HTTP-Referer": "https://github.com/sangsik-yang/agents-orchestration",
+            "X-Title": "Agents Orchestration",
+        },
+        temperature=0,
+        timeout=120,
+    )
+
+def create_initial_state() -> AgentState:
+    """Return a fresh graph state for a new interaction."""
+    return {
+        "messages": [],
+        "next": "Supervisor",
+        "data": {},
+        "retry_count": 0,
+        "last_error": None,
+    }
 
 def call_supervisor(state: AgentState) -> Dict[str, Any]:
     global supervisor_instance
@@ -146,78 +171,103 @@ def build_graph(llm: ChatOpenAI):
     
     return workflow.compile()
 
-def run_interaction(app, initial_query=None):
-    """Run an interactive loop with streaming visual feedback and error recovery."""
-    state = {
-        "messages": [],
-        "next": "Supervisor",
-        "data": {},
-        "retry_count": 0,
-        "last_error": None
-    }
-    
-    print("\n" + "="*50)
+def process_turn(app, state: AgentState, user_input: str) -> str:
+    """Process a single user query and return the last agent output."""
+    state["messages"].append(HumanMessage(content=user_input))
+    state["retry_count"] = 0  # Reset for new user input
+
+    print("\n" + "-" * 30)
+    print("⚙️ Processing...")
+
+    last_agent_output = ""
+    try:
+        for event in app.stream(state, {"recursion_limit": 50}):
+            for node_name, value in event.items():
+                if node_name == "Supervisor":
+                    continue
+
+                # Update state from node output
+                if "messages" in value:
+                    state["messages"].extend(value["messages"])
+                    last_agent_output = value["messages"][-1].content
+
+                if "data" in value:
+                    state["data"].update(value.get("data", {}))
+
+                if "retry_count" in value:
+                    state["retry_count"] = value["retry_count"]
+
+                if "last_error" in value:
+                    state["last_error"] = value["last_error"]
+                    print(f"  └── ⚠️ {node_name} failed. Attempting self-correction...")
+                else:
+                    print(f"  └── 🤖 {node_name} finished successfully.")
+                    state["last_error"] = None
+
+        print("-" * 30)
+        print("\n✨ FINAL RESPONSE:")
+        print(last_agent_output)
+        print("\n" + "=" * 50)
+        return last_agent_output
+    except Exception as e:
+        logger.error(f"Fatal Error: {e}")
+        print(f"\n❌ A fatal error occurred: {e}")
+        return ""
+
+def run_interaction(
+    app,
+    initial_query: Optional[str] = None,
+    interactive: bool = True,
+):
+    """Run an interactive loop or a single smoke-test turn."""
+    state = create_initial_state()
+
+    print("\n" + "=" * 50)
     print("🚀 Hierarchical Agent System Ready (Self-Correction Enabled)")
-    print("="*50 + "\n")
-    
-    is_first_run = True
+    print("=" * 50 + "\n")
+
+    pending_query = initial_query
     while True:
-        if is_first_run and initial_query:
-            user_input = initial_query
-            is_first_run = False
+        if pending_query is not None:
+            user_input = pending_query
+            pending_query = None
             print(f"User Query: {user_input}")
-        else:
+        elif interactive:
             try:
                 user_input = input("\nUser > ")
                 if user_input.lower() in ["exit", "quit", "q"]:
                     break
             except EOFError:
                 break
-        
+        else:
+            break
+
         if not user_input.strip():
+            if not interactive:
+                break
             continue
 
-        state["messages"].append(HumanMessage(content=user_input))
-        state["retry_count"] = 0 # Reset for new user input
-        
-        print("\n" + "-"*30)
-        print("⚙️ Processing...")
-        
-        try:
-            last_agent_output = ""
-            for event in app.stream(state, {"recursion_limit": 50}):
-                for node_name, value in event.items():
-                    if node_name == "Supervisor":
-                        continue
-                    
-                    # Update state from node output
-                    if "messages" in value:
-                        state["messages"].extend(value["messages"])
-                        last_agent_output = value['messages'][-1].content
-                    
-                    if "data" in value:
-                        state["data"].update(value.get("data", {}))
-                    
-                    if "retry_count" in value:
-                        state["retry_count"] = value["retry_count"]
-                    
-                    if "last_error" in value:
-                        state["last_error"] = value["last_error"]
-                        print(f"  └── ⚠️ {node_name} failed. Attempting self-correction...")
-                    else:
-                        print(f"  └── 🤖 {node_name} finished successfully.")
-                        state["last_error"] = None
-            
-            print("-"*30)
-            print("\n✨ FINAL RESPONSE:")
-            print(last_agent_output)
-            print("\n" + "="*50)
-                        
-        except Exception as e:
-            logger.error(f"Fatal Error: {e}")
-            print(f"\n❌ A fatal error occurred: {e}")
+        process_turn(app, state, user_input)
 
-if __name__ == "__main__":
+        if not interactive:
+            break
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Hierarchical agent orchestration runner.")
+    parser.add_argument(
+        "--smoke-test",
+        action="store_true",
+        help="Run one non-interactive turn with a built-in query and exit.",
+    )
+    parser.add_argument(
+        "--query",
+        help="Run a single non-interactive turn with a custom query and exit.",
+    )
+    return parser.parse_args(argv)
+
+def main(argv=None):
+    args = parse_args(argv)
+
     # Check LangSmith Tracing
     tracing_enabled = os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true"
     if tracing_enabled:
@@ -226,19 +276,28 @@ if __name__ == "__main__":
     else:
         logger.warning("🔍 LangSmith Tracing is DISABLED (Set LANGCHAIN_TRACING_V2=true in .env)")
 
-    llm = ChatOpenAI(
-        model="stepfun/step-3.5-flash:free",
-        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-        openai_api_base="https://openrouter.ai/api/v1",
-        default_headers={
-            "HTTP-Referer": "https://github.com/sangsik-yang/agents-orchestration",
-            "X-Title": "Agents Orchestration",
-        },
-        temperature=0,
-        timeout=120
-    )
+    try:
+        llm = create_llm()
+    except RuntimeError as exc:
+        logger.error(str(exc))
+        return 1
 
     app = build_graph(llm)
-    
-    initial_task = "Analyze the Titanic dataset: What was the survival rate of female passengers? Then summarize the finding."
-    run_interaction(app, initial_query=initial_task)
+
+    non_interactive = args.smoke_test or args.query is not None
+    initial_task = args.query if args.query is not None else (
+        DEFAULT_SMOKE_QUERY if args.smoke_test else None
+    )
+
+    if non_interactive:
+        logger.info("Running in non-interactive mode.")
+
+    run_interaction(
+        app,
+        initial_query=initial_task,
+        interactive=not non_interactive,
+    )
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())

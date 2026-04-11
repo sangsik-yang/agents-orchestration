@@ -1,6 +1,6 @@
 # 계층적 에이전트 오케스트레이션 (Hierarchical Agent Orchestration)
 
-**LangGraph**와 **Google Gemini**를 사용하여 구축된 지능형 멀티 에이전트 시스템입니다. Supervisor-Worker 패턴을 기반으로 복잡한 작업을 자율적으로 분석하고 해결합니다. 최근 로깅, 공유 메모리, 실시간 스트리밍, 자가 복구 기능을 추가하여 완성도를 높였습니다.
+**LangGraph**와 **OpenRouter**를 사용하여 구축된 지능형 멀티 에이전트 시스템입니다. Supervisor-Worker 패턴을 기반으로 복잡한 작업을 자율적으로 분석하고 해결합니다. 현재는 대화형 실행과 단발성 smoke test 실행을 모두 지원합니다.
 
 ## 주요 특징
 
@@ -9,7 +9,7 @@
 - **실시간 스트리밍 & 시각적 피드백**: CLI 환경에서 에이전트의 현재 작업 상태와 중간 결과물을 직관적으로 보여줍니다.
 - **자가 복구 (Self-Correction)**: 작업 중 에러 발생 시 Supervisor가 원인을 분석하여 최대 3회까지 자동 수정 및 재시도를 지시합니다.
 - **구조화된 로깅 (Logging & Observability)**: `colorlog`를 통한 단계별 컬러 로깅과 LangSmith 연동을 지원하여 시스템 흐름을 명확하게 파악할 수 있습니다.
-- **OpenRouter 기반**: `stepfun/step-3.5-flash:free` 모델을 활용하여 빠르고 정확한 추론 성능을 제공합니다.
+- **OpenRouter 기반**: `stepfun/step-3.5-flash:free` 모델을 활용하여 추론합니다.
 - **전문 워커 구성**:
     - **Researcher**: DuckDuckGo를 이용한 실시간 웹 검색 및 정보 누적.
     - **SQLQueryer**: SQLite 기반 Titanic 데이터셋 분석 및 결과 데이터화.
@@ -17,7 +17,7 @@
 
 ## 아키텍처 흐름
 
-사용자 입력 → **Supervisor** (의사결정 및 지시) → **Worker** (작업 수행 / 에러 시 자동 피드백) → **Shared Memory** (결과 저장) → **Supervisor** (검토 및 다음 단계 결정) → **Writer** (최종 결과 작성) → **FINISH**
+사용자 입력 또는 `--smoke-test` → **Supervisor** (의사결정 및 지시) → **Worker** (작업 수행 / 에러 시 자동 피드백) → **Shared Memory** (결과 저장) → **Supervisor** (검토 및 다음 단계 결정) → **Writer** (최종 결과 작성) → **FINISH**
 
 ## 시작하기
 
@@ -54,10 +54,23 @@
     ```bash
     uv run main.py
     ```
+   - 단발성 smoke test:
+     ```bash
+     uv run main.py --smoke-test
+     ```
+   - 한 번만 실행할 커스텀 질의:
+     ```bash
+     uv run main.py --query "Analyze the Titanic dataset."
+     ```
+
+### 현재 검증 상태
+- `uv run pytest -q` 기준 `9 passed`
+- `uv run main.py --smoke-test`로 비대화형 1회 실행 가능
+- `.env`의 `OPENROUTER_API_KEY`를 사용해 OpenRouter에 연결
 
 ## 사용된 주요 기술
 - **LangGraph / LangChain**: 복잡한 에이전트 워크플로우 및 LLM 통합 관리.
-- **OpenRouter / Google Gemini**: 고성능 추론 모델 서비스.
+- **OpenRouter / stepfun/step-3.5-flash:free**: 현재 런타임에서 사용하는 추론 모델.
 - **colorlog**: 시각적인 터미널 로그 시스템.
 - **SQLAlchemy**: 데이터베이스 관리 및 SQL 분석 엔진.
 - **Pytest**: 시스템의 안정성 검증을 위한 테스트 프레임워크.
