@@ -4,7 +4,7 @@ from functools import partial
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -33,22 +33,19 @@ DEFAULT_SMOKE_QUERY = (
 # Global references
 supervisor_instance = None
 
-def create_llm() -> ChatOpenAI:
-    """Create the OpenRouter-backed chat model."""
-    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-    if not openrouter_api_key:
-        raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
+def create_llm() -> ChatGoogleGenerativeAI:
+    """Create the Google Gemini-backed chat model."""
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    if not google_api_key:
+        raise RuntimeError("Missing API Key: GOOGLE_API_KEY must be set in .env")
 
-    return ChatOpenAI(
-        model="z-ai/glm-4.5-air:free",
-        openai_api_key=openrouter_api_key,
-        openai_api_base="https://openrouter.ai/api/v1",
-        default_headers={
-            "HTTP-Referer": "https://github.com/sangsik-yang/agents-orchestration",
-            "X-Title": "Agents Orchestration",
-        },
+    return ChatGoogleGenerativeAI(
+        #model="gemini-2.5-flash-lite",
+        model="gemini-3.1-flash-lite-preview",
+        api_key=google_api_key,
         temperature=0,
-        timeout=120,
+        request_timeout=120,
+        convert_system_message_to_human=True,
     )
 
 def create_initial_state() -> AgentState:
@@ -100,7 +97,7 @@ def call_supervisor(state: AgentState) -> Dict[str, Any]:
         log_error("Supervisor", str(e))
         raise
 
-def run_researcher(state: AgentState, llm: ChatOpenAI):
+def run_researcher(state: AgentState, llm: Any):
     log_node_start("Researcher")
     try:
         res = researcher_node(state, llm)
@@ -113,7 +110,7 @@ def run_researcher(state: AgentState, llm: ChatOpenAI):
             "last_error": str(e)
         }
 
-def run_writer(state: AgentState, llm: ChatOpenAI):
+def run_writer(state: AgentState, llm: Any):
     log_node_start("Writer")
     try:
         res = writer_node(state, llm)
@@ -126,7 +123,7 @@ def run_writer(state: AgentState, llm: ChatOpenAI):
             "last_error": str(e)
         }
 
-def run_sql_queryer(state: AgentState, llm: ChatOpenAI):
+def run_sql_queryer(state: AgentState, llm: Any):
     log_node_start("SQLQueryer")
     try:
         res = sql_query_node(state, llm)
@@ -140,7 +137,7 @@ def run_sql_queryer(state: AgentState, llm: ChatOpenAI):
             "last_error": str(e)
         }
 
-def build_graph(llm: ChatOpenAI):
+def build_graph(llm: Any):
     """Assemble the hierarchical graph."""
     global supervisor_instance
     workflow = StateGraph(AgentState)

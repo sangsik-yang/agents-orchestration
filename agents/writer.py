@@ -1,10 +1,10 @@
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.prebuilt import create_react_agent
 from logger import logger
 import json
+from typing import Any
 
-def writer_node(state, llm: ChatOpenAI):
+def writer_node(state, llm: Any):
     """Writer agent logic."""
     writer_agent = create_react_agent(
         llm,

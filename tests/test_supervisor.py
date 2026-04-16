@@ -13,6 +13,25 @@ def test_create_supervisor_routing(mock_llm):
     assert result.next == "SQLQueryer"
 
 
+def test_create_supervisor_handles_list_content():
+    mock_llm = RunnableLambda(
+        lambda _input: AIMessage(
+            content=[
+                {
+                    "text": '{"next": "SQLQueryer", "instruction": "Calculate survival rates."}'
+                }
+            ]
+        )
+    )
+
+    supervisor = create_supervisor(mock_llm)
+
+    state = {"messages": [HumanMessage(content="Analyze titanic data")]}
+    result = supervisor.invoke(state)
+
+    assert result.next == "SQLQueryer"
+
+
 @pytest.fixture
 def mock_llm():
     return RunnableLambda(

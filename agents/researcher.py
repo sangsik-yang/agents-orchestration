@@ -1,14 +1,14 @@
 from langchain_community.tools.ddg_search import DuckDuckGoSearchRun
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage
 from langgraph.prebuilt import create_react_agent
 from logger import logger
+from typing import Any
 
 # Use DuckDuckGo Search
 search_tool = DuckDuckGoSearchRun()
 tools = [search_tool]
 
-def researcher_node(state, llm: ChatOpenAI):
+def researcher_node(state, llm: Any):
     """Researcher agent logic using a ReAct agent."""
     researcher_agent = create_react_agent(
         llm, 
