@@ -1,7 +1,6 @@
 import json
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 from logger import logger
 
@@ -9,7 +8,34 @@ class RouteResponse(BaseModel):
     next: Literal["Researcher", "Writer", "SQLQueryer", "FINISH"]
     instruction: str = "Proceed with the assigned task."
 
-def create_supervisor(llm: ChatOpenAI):
+def _normalize_content(content: Any) -> str:
+    """Convert model content payloads into plain text."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+                continue
+
+            if isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+                    continue
+
+                for key in ("content", "value", "data"):
+                    value = item.get(key)
+                    if isinstance(value, str):
+                        parts.append(value)
+                        break
+        return "".join(parts)
+
+    return str(content)
+
+def create_supervisor(llm: Any):
     """Supervisor agent to route the conversation and handle errors."""
     system_prompt = (
         "You are the manager of a research, writing, and data analysis team."
@@ -45,7 +71,7 @@ def create_supervisor(llm: ChatOpenAI):
     )
     
     def parse_output(ai_message):
-        content = ai_message.content.strip()
+        content = _normalize_content(getattr(ai_message, "content", ai_message)).strip()
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:

@@ -1,11 +1,11 @@
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain_community.utilities import SQLDatabase
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage
 import os
 from logger import logger
+from typing import Any
 
-def sql_query_node(state, llm: ChatOpenAI):
+def sql_query_node(state, llm: Any):
     """SQL Query worker using LangChain's SQL agent."""
     db = SQLDatabase.from_uri("sqlite:///titanic.db")
     
