@@ -5,7 +5,7 @@
 
 ### 구현된 기능
 - **계층적 그래프 구조**: 중앙 관리자(Supervisor)가 작업을 라우팅하는 Supervisor-Worker 패턴.
-- **OpenRouter 통합**: `qwen/qwen3.6-plus:free` 모델을 사용하는 OpenRouter 기반 추론 경로.
+- **OpenRouter 통합**: `z-ai/glm-4.5-air:free` 모델을 사용하는 OpenRouter 기반 추론 경로.
 - **지시 기반 라우팅**: Supervisor가 워커에게 명시적인 `instruction`을 전달해 작업 정확도를 높임.
 - **공유 메모리**: `AgentState["data"]` 필드를 통해 검색 결과와 SQL 결과를 다음 노드에 전달.
 - **실시간 스트리밍 인터페이스**: CLI에서 에이전트의 진행 상황과 최종 응답을 출력.

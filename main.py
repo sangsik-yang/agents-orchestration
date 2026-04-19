@@ -36,7 +36,7 @@ DEFAULT_SMOKE_QUERY = (
 # Global references
 supervisor_instance = None
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_OPENROUTER_MODEL = "qwen/qwen3.6-plus:free"
+DEFAULT_OPENROUTER_MODEL = "z-ai/glm-4.5-air:free"
 
 
 def _resolve_llm_delay_seconds(value: Optional[float] = None) -> float:
