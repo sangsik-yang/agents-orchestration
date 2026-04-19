@@ -1,11 +1,11 @@
 # 프로젝트 상태: agents-orchestration
 
 ## 현재 상태
-본 프로젝트는 LangGraph와 Google Gemini API 기반 LLM을 사용하는 계층적 에이전트 오케스트레이션 시스템입니다. 현재는 대화형 실행과 단발성 smoke test 실행을 모두 지원하며, 테스트 기준으로는 안정적으로 동작하는 상태입니다.
+본 프로젝트는 LangGraph와 OpenRouter API 기반 LLM을 사용하는 계층적 에이전트 오케스트레이션 시스템입니다. 현재는 대화형 실행과 단발성 smoke test 실행을 모두 지원하며, 테스트 기준으로는 안정적으로 동작하는 상태입니다.
 
 ### 구현된 기능
 - **계층적 그래프 구조**: 중앙 관리자(Supervisor)가 작업을 라우팅하는 Supervisor-Worker 패턴.
-- **Google Gemini 통합**: `gemini-3.1-flash-lite-preview` 모델을 사용하는 Google API 기반 추론 경로.
+- **OpenRouter 통합**: `nvidia/nemotron-3-nano-30b-a3b:free` 모델을 사용하는 OpenRouter 기반 추론 경로.
 - **지시 기반 라우팅**: Supervisor가 워커에게 명시적인 `instruction`을 전달해 작업 정확도를 높임.
 - **공유 메모리**: `AgentState["data"]` 필드를 통해 검색 결과와 SQL 결과를 다음 노드에 전달.
 - **실시간 스트리밍 인터페이스**: CLI에서 에이전트의 진행 상황과 최종 응답을 출력.
@@ -13,14 +13,15 @@
 - **비대화형 smoke mode**: `uv run main.py --smoke-test`로 입력 없이 한 번만 실행하고 종료.
 - **구조화된 컬러 로깅**: `colorlog` 기반의 단계별 로그 출력.
 - **LangSmith 연동**: `LANGCHAIN_TRACING_V2=true`일 때 추적을 켜도록 구성.
-- **Gemini content 정규화**: Supervisor가 문자열 또는 리스트 형태의 모델 출력을 JSON 파싱 가능한 텍스트로 정규화.
+- **LLM 호출 간 지연 옵션**: `--llm-call-delay-seconds`로 RPM 완화를 위한 전역 throttle을 적용 가능.
+- **OpenRouter content 정규화**: Supervisor가 문자열 또는 리스트 형태의 모델 출력을 JSON 파싱 가능한 텍스트로 정규화.
 - **SQLQueryer 에이전트**: SQLite 기반 Titanic 데이터셋을 분석하는 전용 워커.
 - **테스트 환경**: `pytest` 기준 8개 테스트가 통과하는 상태.
 
 ### 최근 검증 결과
 - `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q`
-- 결과: `8 passed`
-- `main.py`는 모듈 import와 smoke mode 실행 경로를 기준으로 동작 검증 완료
+- 결과: `10 passed`
+- `main.py`는 OpenRouter/Nemotron 전환 후 smoke mode까지 재검증 완료
 
 ### 프로젝트 구조
 - `main.py`: 실시간 스트리밍 루프 및 LangGraph 워크플로우 실행 엔트리 포인트.
@@ -42,5 +43,5 @@
 
 ## 환경 요구 사항
 - Python >= 3.11
-- GOOGLE_API_KEY (`.env` 파일에 설정)
+- OPENROUTER_API_KEY (`.env` 파일에 설정)
 - `uv` 패키지 매니저 사용 권장.

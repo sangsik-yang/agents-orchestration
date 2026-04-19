@@ -33,3 +33,41 @@ def test_run_interaction_non_interactive_skips_input():
     assert result is None
     mock_input.assert_not_called()
     app.stream.assert_called_once()
+
+
+def test_create_llm_uses_openrouter_defaults(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter-key")
+    monkeypatch.setenv("OPENROUTER_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free")
+    monkeypatch.setenv("OPENROUTER_LLM_CALL_DELAY_SECONDS", "4.5")
+    monkeypatch.setenv("OPENROUTER_HTTP_REFERER", "https://example.com")
+    monkeypatch.setenv("OPENROUTER_APP_TITLE", "agents-orchestration")
+
+    llm = main.create_llm()
+
+    assert isinstance(llm, main.ThrottledChatOpenAI)
+    assert llm.model_name == "nvidia/nemotron-3-nano-30b-a3b:free"
+    assert str(llm.openai_api_base) == main.OPENROUTER_BASE_URL
+    assert llm.openai_api_key.get_secret_value() == "test-openrouter-key"
+    assert llm.call_delay_seconds == 4.5
+    assert llm.default_headers == {
+        "HTTP-Referer": "https://example.com",
+        "X-OpenRouter-Title": "agents-orchestration",
+    }
+
+
+def test_throttled_chat_openai_waits_before_next_slot():
+    llm = main.ThrottledChatOpenAI(
+        model="nvidia/nemotron-3-nano-30b-a3b:free",
+        openai_api_key="test-openrouter-key",
+        base_url=main.OPENROUTER_BASE_URL,
+        call_delay_seconds=2.0,
+    )
+    llm._next_available_at = 10.0
+
+    with patch("main.time.monotonic", side_effect=[8.0, 8.0]), patch(
+        "main.time.sleep"
+    ) as mock_sleep:
+        llm._wait_for_slot()
+
+    mock_sleep.assert_called_once_with(2.0)
+    assert llm._next_available_at == 10.0

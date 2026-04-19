@@ -1,12 +1,15 @@
 import argparse
 import os
+import time
 from functools import partial
+from threading import Lock
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import HumanMessage, AIMessage
+from pydantic import PrivateAttr
 
 # Local imports
 from state import AgentState
@@ -32,20 +35,99 @@ DEFAULT_SMOKE_QUERY = (
 
 # Global references
 supervisor_instance = None
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_OPENROUTER_MODEL = "nvidia/nemotron-3-nano-30b-a3b:free"
 
-def create_llm() -> ChatGoogleGenerativeAI:
-    """Create the Google Gemini-backed chat model."""
-    google_api_key = os.getenv("GOOGLE_API_KEY")
-    if not google_api_key:
-        raise RuntimeError("Missing API Key: GOOGLE_API_KEY must be set in .env")
 
-    return ChatGoogleGenerativeAI(
-        #model="gemini-2.5-flash-lite",
-        model="gemini-3.1-flash-lite-preview",
-        api_key=google_api_key,
+def _resolve_llm_delay_seconds(value: Optional[float] = None) -> float:
+    if value is not None:
+        return max(0.0, value)
+
+    raw_value = os.getenv("OPENROUTER_LLM_CALL_DELAY_SECONDS", "0").strip()
+    try:
+        return max(0.0, float(raw_value))
+    except ValueError as exc:
+        raise RuntimeError(
+            "OPENROUTER_LLM_CALL_DELAY_SECONDS must be a non-negative number"
+        ) from exc
+
+
+def _build_openrouter_headers() -> Dict[str, str]:
+    headers: Dict[str, str] = {}
+
+    referer = os.getenv("OPENROUTER_HTTP_REFERER")
+    if referer:
+        headers["HTTP-Referer"] = referer
+
+    title = os.getenv("OPENROUTER_APP_TITLE")
+    if title:
+        headers["X-OpenRouter-Title"] = title
+
+    return headers
+
+
+class ThrottledChatOpenAI(ChatOpenAI):
+    """ChatOpenAI wrapper that spaces out API calls to avoid RPM bursts."""
+
+    call_delay_seconds: float = 0.0
+    _throttle_lock: Lock = PrivateAttr(default_factory=Lock)
+    _next_available_at: float = PrivateAttr(default=0.0)
+
+    def _wait_for_slot(self) -> None:
+        delay = max(0.0, self.call_delay_seconds)
+        if delay <= 0:
+            return
+
+        with self._throttle_lock:
+            now = time.monotonic()
+            if self._next_available_at > now:
+                time.sleep(self._next_available_at - now)
+            self._next_available_at = time.monotonic() + delay
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ):
+        self._wait_for_slot()
+        return super()._generate(
+            messages=messages,
+            stop=stop,
+            run_manager=run_manager,
+            **kwargs,
+        )
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ):
+        self._wait_for_slot()
+        return await super()._agenerate(
+            messages=messages,
+            stop=stop,
+            run_manager=run_manager,
+            **kwargs,
+        )
+
+def create_llm(call_delay_seconds: Optional[float] = None) -> ThrottledChatOpenAI:
+    """Create the OpenRouter-backed chat model."""
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    if not openrouter_api_key:
+        raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
+
+    return ThrottledChatOpenAI(
+        model=os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL),
+        openai_api_key=openrouter_api_key,
+        base_url=OPENROUTER_BASE_URL,
         temperature=0,
         request_timeout=120,
-        convert_system_message_to_human=True,
+        default_headers=_build_openrouter_headers() or None,
+        call_delay_seconds=_resolve_llm_delay_seconds(call_delay_seconds),
     )
 
 def create_initial_state() -> AgentState:
@@ -260,6 +342,11 @@ def parse_args(argv=None):
         "--query",
         help="Run a single non-interactive turn with a custom query and exit.",
     )
+    parser.add_argument(
+        "--llm-call-delay-seconds",
+        type=float,
+        help="Sleep this many seconds before each LLM call to avoid RPM bursts.",
+    )
     return parser.parse_args(argv)
 
 def main(argv=None):
@@ -274,7 +361,7 @@ def main(argv=None):
         logger.warning("🔍 LangSmith Tracing is DISABLED (Set LANGCHAIN_TRACING_V2=true in .env)")
 
     try:
-        llm = create_llm()
+        llm = create_llm(call_delay_seconds=args.llm_call_delay_seconds)
     except RuntimeError as exc:
         logger.error(str(exc))
         return 1

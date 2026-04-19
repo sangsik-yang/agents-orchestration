@@ -1,10 +1,23 @@
 import os
+import json
+import urllib.request
 from dotenv import load_dotenv
-import google.generativeai as genai
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-for m in genai.list_models():
-    if 'generateContent' in m.supported_generation_methods:
-        print(m.name)
+api_key = os.getenv("OPENROUTER_API_KEY")
+if not api_key:
+    raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
+
+request = urllib.request.Request(
+    "https://openrouter.ai/api/v1/models",
+    headers={"Authorization": f"Bearer {api_key}"},
+)
+
+with urllib.request.urlopen(request) as response:
+    payload = json.load(response)
+
+for model in payload.get("data", []):
+    model_id = model.get("id", "")
+    if model_id.endswith(":free"):
+        print(model_id)
