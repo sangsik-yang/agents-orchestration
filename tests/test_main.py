@@ -37,7 +37,7 @@ def test_run_interaction_non_interactive_skips_input():
 
 def test_create_llm_uses_openrouter_defaults(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-openrouter-key")
-    monkeypatch.setenv("OPENROUTER_MODEL", "stepfun/step-3.5-flash:free")
+    monkeypatch.setenv("OPENROUTER_MODEL", "qwen/qwen3.6-plus:free")
     monkeypatch.setenv("OPENROUTER_LLM_CALL_DELAY_SECONDS", "4.5")
     monkeypatch.setenv("OPENROUTER_HTTP_REFERER", "https://example.com")
     monkeypatch.setenv("OPENROUTER_APP_TITLE", "agents-orchestration")
@@ -45,7 +45,7 @@ def test_create_llm_uses_openrouter_defaults(monkeypatch):
     llm = main.create_llm()
 
     assert isinstance(llm, main.ThrottledChatOpenAI)
-    assert llm.model_name == "stepfun/step-3.5-flash:free"
+    assert llm.model_name == "qwen/qwen3.6-plus:free"
     assert str(llm.openai_api_base) == main.OPENROUTER_BASE_URL
     assert llm.openai_api_key.get_secret_value() == "test-openrouter-key"
     assert llm.call_delay_seconds == 4.5
@@ -57,7 +57,7 @@ def test_create_llm_uses_openrouter_defaults(monkeypatch):
 
 def test_throttled_chat_openai_waits_before_next_slot():
     llm = main.ThrottledChatOpenAI(
-        model="stepfun/step-3.5-flash:free",
+        model="qwen/qwen3.6-plus:free",
         openai_api_key="test-openrouter-key",
         base_url=main.OPENROUTER_BASE_URL,
         call_delay_seconds=2.0,

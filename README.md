@@ -9,7 +9,7 @@
 - **실시간 스트리밍 & 시각적 피드백**: CLI 환경에서 에이전트의 현재 작업 상태와 중간 결과물을 직관적으로 보여줍니다.
 - **자가 복구 (Self-Correction)**: 작업 중 에러 발생 시 Supervisor가 원인을 분석하여 최대 3회까지 자동 수정 및 재시도를 지시합니다.
 - **구조화된 로깅 (Logging & Observability)**: `colorlog`를 통한 단계별 컬러 로깅과 LangSmith 연동을 지원하여 시스템 흐름을 명확하게 파악할 수 있습니다.
-- **OpenRouter 기반**: `stepfun/step-3.5-flash:free` 모델을 기본값으로 사용합니다.
+- **OpenRouter 기반**: `qwen/qwen3.6-plus:free` 모델을 기본값으로 사용합니다.
 - **전문 워커 구성**:
     - **Researcher**: DuckDuckGo를 이용한 실시간 웹 검색 및 정보 누적.
     - **SQLQueryer**: SQLite 기반 Titanic 데이터셋 분석 및 결과 데이터화.
@@ -39,7 +39,7 @@
     `.env` 파일을 생성하고 OpenRouter API 키를 추가합니다:
     ```env
     OPENROUTER_API_KEY=your_openrouter_api_key_here
-    OPENROUTER_MODEL=stepfun/step-3.5-flash:free
+    OPENROUTER_MODEL=qwen/qwen3.6-plus:free
     # 선택: RPM 완화를 위해 LLM 호출 사이에 추가 지연을 넣습니다.
     OPENROUTER_LLM_CALL_DELAY_SECONDS=4
     
@@ -77,7 +77,7 @@
 
 ## 사용된 주요 기술
 - **LangGraph / LangChain**: 복잡한 에이전트 워크플로우 및 LLM 통합 관리.
-- **OpenRouter / stepfun/step-3.5-flash:free**: 현재 런타임에서 사용하는 기본 추론 모델.
+- **OpenRouter / qwen/qwen3.6-plus:free**: 현재 런타임에서 사용하는 기본 추론 모델.
 - **colorlog**: 시각적인 터미널 로그 시스템.
 - **SQLAlchemy**: 데이터베이스 관리 및 SQL 분석 엔진.
 - **Pytest**: 시스템의 안정성 검증을 위한 테스트 프레임워크.

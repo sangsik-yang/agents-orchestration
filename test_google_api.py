@@ -10,7 +10,7 @@ def test_llm():
     print("Testing OpenRouter connection...")
     try:
         llm = ChatOpenAI(
-            model=os.getenv("OPENROUTER_MODEL", "stepfun/step-3.5-flash:free"),
+            model=os.getenv("OPENROUTER_MODEL", "qwen/qwen3.6-plus:free"),
             openai_api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
             temperature=0,
