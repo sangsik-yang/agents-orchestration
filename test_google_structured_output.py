@@ -17,7 +17,7 @@ def test_structured():
     print("Testing Structured Output with OpenRouter...")
     try:
         llm = ChatOpenAI(
-            model=os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free"),
+            model=os.getenv("OPENROUTER_MODEL", "stepfun/step-3.5-flash:free"),
             openai_api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
             temperature=0,
