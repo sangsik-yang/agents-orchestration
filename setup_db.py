@@ -1,6 +1,6 @@
 import pandas as pd
 import sqlite3
-import os
+from config import get_titanic_db_path
 
 def setup_database():
     """Download, clean and load Titanic data into SQLite."""
@@ -21,9 +21,9 @@ def setup_database():
         # Convert some columns to lowercase to avoid case-sensitivity issues
         df.columns = [c.lower() for c in df.columns]
         
-        # Connect to SQLite
-        conn = sqlite3.connect('titanic.db')
-        print("Loading data into 'titanic' table in 'titanic.db'...")
+        db_path = get_titanic_db_path()
+        conn = sqlite3.connect(db_path)
+        print(f"Loading data into 'titanic' table in '{db_path}'...")
         df.to_sql('titanic', conn, if_exists='replace', index=False)
         conn.close()
         print("Database setup complete.")

@@ -1,9 +1,11 @@
-import os
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
-from pydantic import BaseModel
 from typing import Literal
+
+from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel
+
+from config import OPENROUTER_BASE_URL, get_openrouter_api_key, get_openrouter_model
 
 load_dotenv()
 
@@ -13,13 +15,13 @@ class RouteResponse(BaseModel):
     instruction: str = "Proceed with the assigned task."
 
 
-def test_structured():
+def main() -> None:
     print("Testing Structured Output with OpenRouter...")
     try:
         llm = ChatOpenAI(
-            model=os.getenv("OPENROUTER_MODEL", "z-ai/glm-4.5-air:free"),
-            openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-            base_url="https://openrouter.ai/api/v1",
+            model=get_openrouter_model(),
+            openai_api_key=get_openrouter_api_key(),
+            base_url=OPENROUTER_BASE_URL,
             temperature=0,
             request_timeout=45,
         )
@@ -33,4 +35,4 @@ def test_structured():
 
 
 if __name__ == "__main__":
-    test_structured()
+    main()

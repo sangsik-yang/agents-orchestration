@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from langchain_core.messages import AIMessage
 
 import main
+from config import get_titanic_db_uri
 
 
 def test_main_smoke_mode_uses_builtin_query():
@@ -71,3 +72,9 @@ def test_throttled_chat_openai_waits_before_next_slot():
 
     mock_sleep.assert_called_once_with(2.0)
     assert llm._next_available_at == 10.0
+
+
+def test_titanic_db_uri_uses_env_path(monkeypatch):
+    monkeypatch.setenv("TITANIC_DB_PATH", "data/custom.db")
+
+    assert get_titanic_db_uri() == "sqlite:///data/custom.db"

@@ -1,17 +1,13 @@
-import os
 import json
 import urllib.request
 from dotenv import load_dotenv
+from config import OPENROUTER_BASE_URL, get_openrouter_api_key
 
 load_dotenv()
 
-api_key = os.getenv("OPENROUTER_API_KEY")
-if not api_key:
-    raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
-
 request = urllib.request.Request(
-    "https://openrouter.ai/api/v1/models",
-    headers={"Authorization": f"Bearer {api_key}"},
+    f"{OPENROUTER_BASE_URL}/models",
+    headers={"Authorization": f"Bearer {get_openrouter_api_key()}"},
 )
 
 with urllib.request.urlopen(request) as response:

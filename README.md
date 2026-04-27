@@ -10,6 +10,7 @@
 - **자가 복구 (Self-Correction)**: 작업 중 에러 발생 시 Supervisor가 원인을 분석하여 최대 3회까지 자동 수정 및 재시도를 지시합니다.
 - **구조화된 로깅 (Logging & Observability)**: `colorlog`를 통한 단계별 컬러 로깅과 LangSmith 연동을 지원하여 시스템 흐름을 명확하게 파악할 수 있습니다.
 - **OpenRouter 기반**: `z-ai/glm-4.5-air:free` 모델을 기본값으로 사용합니다.
+- **중앙 설정 모듈**: OpenRouter, 호출 지연, Titanic DB 경로를 `config.py`에서 관리합니다.
 - **전문 워커 구성**:
     - **Researcher**: DuckDuckGo를 이용한 실시간 웹 검색 및 정보 누적.
     - **SQLQueryer**: SQLite 기반 Titanic 데이터셋 분석 및 결과 데이터화.
@@ -40,6 +41,8 @@
     ```env
     OPENROUTER_API_KEY=your_openrouter_api_key_here
     OPENROUTER_MODEL=z-ai/glm-4.5-air:free
+    # 선택: 기본값은 titanic.db
+    TITANIC_DB_PATH=titanic.db
     # 선택: RPM 완화를 위해 LLM 호출 사이에 추가 지연을 넣습니다.
     OPENROUTER_LLM_CALL_DELAY_SECONDS=4
     
@@ -69,9 +72,14 @@
      ```bash
      uv run main.py --llm-call-delay-seconds 4
      ```
+   - OpenRouter 연결 수동 확인:
+     ```bash
+     uv run python -m scripts.check_openrouter_api
+     uv run python -m scripts.check_openrouter_structured_output
+     ```
 
 ### 현재 검증 상태
-- `uv run pytest -q` 기준 `10 passed`
+- `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q` 기준 `11 passed`
 - `uv run main.py --smoke-test`로 비대화형 1회 실행 가능
 - `.env`의 `OPENROUTER_API_KEY`를 사용해 OpenRouter API에 연결
 
@@ -82,3 +90,8 @@
 - **SQLAlchemy**: 데이터베이스 관리 및 SQL 분석 엔진.
 - **Pytest**: 시스템의 안정성 검증을 위한 테스트 프레임워크.
 - **uv**: 현대적이고 빠른 Python 패키지 관리 도구.
+
+## 개발 메모
+- Supervisor 노드는 전역 인스턴스 없이 그래프별로 주입됩니다.
+- 워커 노드는 입력 `AgentState`를 직접 수정하지 않고, 갱신할 partial state를 반환합니다.
+- `TITANIC_DB_PATH`를 사용해 테스트/로컬 DB 경로를 분리할 수 있습니다.

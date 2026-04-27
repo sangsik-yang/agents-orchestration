@@ -5,9 +5,10 @@
 - `main.py` builds and runs the graph, parses CLI options, and wires the Supervisor/worker nodes.
 - `agents/` contains worker implementations: `supervisor.py`, `researcher.py`, `sql_queryer.py`, and `writer.py`.
 - `state.py` defines the shared `AgentState`; `logger.py` centralizes console logging.
+- `config.py` centralizes OpenRouter and Titanic DB settings.
 - `setup_db.py` downloads and loads the Titanic dataset into `titanic.db`.
+- `scripts/` contains manual OpenRouter checks.
 - `tests/` contains pytest tests. Pytest is configured to collect only `tests/test_*.py`.
-- `test_google_api.py` and `test_google_structured_output.py` are manual OpenRouter checks.
 
 ## Build, Test, and Development Commands
 
@@ -17,6 +18,7 @@
 - `uv run main.py --smoke-test`: run one built-in non-interactive query.
 - `uv run main.py --query "Analyze the Titanic dataset."`: run one custom query.
 - `uv run pytest -q`: run the automated test suite.
+- `uv run python -m scripts.check_openrouter_api`: manually test OpenRouter connectivity.
 
 If sandboxed tooling blocks uv cache access, use `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q`.
 
@@ -30,7 +32,7 @@ Avoid broad refactors when changing one agent. Do not commit generated caches su
 
 The project uses pytest. Add tests under `tests/` using the `test_*.py` pattern. Mock LLM calls and external services; automated tests should not require OpenRouter, DuckDuckGo, LangSmith, or network access. For CLI behavior, follow `tests/test_main.py` and patch `create_llm`, `build_graph`, or node functions.
 
-Run `uv run pytest -q` before opening a PR. Current expected baseline is 10 passing tests.
+Run `uv run pytest -q` before opening a PR. Current expected baseline is 11 passing tests.
 
 ## Commit & Pull Request Guidelines
 
@@ -40,4 +42,4 @@ Pull requests should include a short description, test results, and any required
 
 ## Security & Configuration Tips
 
-Do not commit `.env`, API keys, LangSmith keys, or generated `titanic.db` files unless explicitly intended. Required runtime configuration includes `OPENROUTER_API_KEY`; optional settings include `OPENROUTER_MODEL`, `OPENROUTER_LLM_CALL_DELAY_SECONDS`, `LANGCHAIN_TRACING_V2`, and `LANGCHAIN_API_KEY`.
+Do not commit `.env`, API keys, LangSmith keys, or generated `titanic.db` files unless explicitly intended. Required runtime configuration includes `OPENROUTER_API_KEY`; optional settings include `OPENROUTER_MODEL`, `OPENROUTER_LLM_CALL_DELAY_SECONDS`, `TITANIC_DB_PATH`, `LANGCHAIN_TRACING_V2`, and `LANGCHAIN_API_KEY`.

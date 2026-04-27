@@ -1,7 +1,5 @@
 from langchain_community.tools.ddg_search import DuckDuckGoSearchRun
-from langchain_core.messages import AIMessage
 from langgraph.prebuilt import create_react_agent
-from logger import logger
 from typing import Any
 
 # Use DuckDuckGo Search
@@ -20,16 +18,12 @@ def researcher_node(state, llm: Any):
     result = researcher_agent.invoke(state)
     last_msg = result["messages"][-1]
     
-    # Update shared data
-    if "data" not in state:
-        state["data"] = {}
-    
-    if "search_history" not in state["data"]:
-        state["data"]["search_history"] = []
-    
-    state["data"]["search_history"].append(last_msg.content)
+    data = dict(state.get("data", {}))
+    search_history = list(data.get("search_history", []))
+    search_history.append(last_msg.content)
+    data["search_history"] = search_history
     
     return {
         "messages": [last_msg],
-        "data": state["data"]
+        "data": data
     }

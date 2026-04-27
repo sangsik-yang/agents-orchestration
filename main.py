@@ -12,6 +12,14 @@ from langgraph.graph import StateGraph, START, END
 from pydantic import PrivateAttr
 
 # Local imports
+from config import (
+    DEFAULT_OPENROUTER_MODEL,
+    OPENROUTER_BASE_URL,
+    get_openrouter_api_key,
+    get_openrouter_headers,
+    get_openrouter_model,
+    resolve_llm_delay_seconds,
+)
 from state import AgentState
 from agents.supervisor import create_supervisor
 from agents.researcher import researcher_node
@@ -32,39 +40,6 @@ DEFAULT_SMOKE_QUERY = (
     "Analyze the Titanic dataset: What was the survival rate of female passengers? "
     "Then summarize the finding."
 )
-
-# Global references
-supervisor_instance = None
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_OPENROUTER_MODEL = "z-ai/glm-4.5-air:free"
-
-
-def _resolve_llm_delay_seconds(value: Optional[float] = None) -> float:
-    if value is not None:
-        return max(0.0, value)
-
-    raw_value = os.getenv("OPENROUTER_LLM_CALL_DELAY_SECONDS", "0").strip()
-    try:
-        return max(0.0, float(raw_value))
-    except ValueError as exc:
-        raise RuntimeError(
-            "OPENROUTER_LLM_CALL_DELAY_SECONDS must be a non-negative number"
-        ) from exc
-
-
-def _build_openrouter_headers() -> Dict[str, str]:
-    headers: Dict[str, str] = {}
-
-    referer = os.getenv("OPENROUTER_HTTP_REFERER")
-    if referer:
-        headers["HTTP-Referer"] = referer
-
-    title = os.getenv("OPENROUTER_APP_TITLE")
-    if title:
-        headers["X-OpenRouter-Title"] = title
-
-    return headers
-
 
 class ThrottledChatOpenAI(ChatOpenAI):
     """ChatOpenAI wrapper that spaces out API calls to avoid RPM bursts."""
@@ -116,18 +91,14 @@ class ThrottledChatOpenAI(ChatOpenAI):
 
 def create_llm(call_delay_seconds: Optional[float] = None) -> ThrottledChatOpenAI:
     """Create the OpenRouter-backed chat model."""
-    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-    if not openrouter_api_key:
-        raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
-
     return ThrottledChatOpenAI(
-        model=os.getenv("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL),
-        openai_api_key=openrouter_api_key,
+        model=get_openrouter_model(),
+        openai_api_key=get_openrouter_api_key(),
         base_url=OPENROUTER_BASE_URL,
         temperature=0,
         request_timeout=120,
-        default_headers=_build_openrouter_headers() or None,
-        call_delay_seconds=_resolve_llm_delay_seconds(call_delay_seconds),
+        default_headers=get_openrouter_headers(),
+        call_delay_seconds=resolve_llm_delay_seconds(call_delay_seconds),
     )
 
 def create_initial_state() -> AgentState:
@@ -140,8 +111,7 @@ def create_initial_state() -> AgentState:
         "last_error": None,
     }
 
-def call_supervisor(state: AgentState) -> Dict[str, Any]:
-    global supervisor_instance
+def call_supervisor(state: AgentState, supervisor: Any) -> Dict[str, Any]:
     try:
         log_node_start("Supervisor")
         
@@ -149,7 +119,7 @@ def call_supervisor(state: AgentState) -> Dict[str, Any]:
         current_agent = state.get("next")
         last_error = state.get("last_error")
         
-        result = supervisor_instance.invoke(state)
+        result = supervisor.invoke(state)
         
         # Logic to update retry count
         new_retry_count = state.get("retry_count", 0)
@@ -221,12 +191,10 @@ def run_sql_queryer(state: AgentState, llm: Any):
 
 def build_graph(llm: Any):
     """Assemble the hierarchical graph."""
-    global supervisor_instance
     workflow = StateGraph(AgentState)
-    
-    supervisor_instance = create_supervisor(llm)
-    
-    workflow.add_node("Supervisor", call_supervisor)
+    supervisor = create_supervisor(llm)
+
+    workflow.add_node("Supervisor", partial(call_supervisor, supervisor=supervisor))
     workflow.add_node("Researcher", partial(run_researcher, llm=llm))
     workflow.add_node("Writer", partial(run_writer, llm=llm))
     workflow.add_node("SQLQueryer", partial(run_sql_queryer, llm=llm))

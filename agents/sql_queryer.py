@@ -1,13 +1,13 @@
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain_community.utilities import SQLDatabase
 from langchain_core.messages import AIMessage
-import os
+from config import get_titanic_db_uri
 from logger import logger
 from typing import Any
 
 def sql_query_node(state, llm: Any):
     """SQL Query worker using LangChain's SQL agent."""
-    db = SQLDatabase.from_uri("sqlite:///titanic.db")
+    db = SQLDatabase.from_uri(get_titanic_db_uri())
     
     # Create the SQL agent
     sql_agent = create_sql_agent(
@@ -23,12 +23,10 @@ def sql_query_node(state, llm: Any):
     last_instruction = state["messages"][-1].content
     result = sql_agent.invoke({"input": last_instruction})
     
-    # Store structured result in shared data
-    if "data" not in state:
-        state["data"] = {}
-    
+    data = dict(state.get("data", {}))
+
     # Save the last output to the shared data for the Writer to use
-    state["data"]["last_sql_result"] = result["output"]
+    data["last_sql_result"] = result["output"]
     
     # Extract SQL queries for logging
     intermediate_steps = result.get("intermediate_steps", [])
@@ -43,10 +41,10 @@ def sql_query_node(state, llm: Any):
     if sql_queries:
         logger.debug(f"SQLQueryer executed {len(sql_queries)} queries.")
         # For transparency, we could store queries too
-        state["data"]["last_sql_queries"] = sql_queries
+        data["last_sql_queries"] = sql_queries
 
     # Return the final output message and updated data
     return {
         "messages": [AIMessage(content=result["output"], name="SQLQueryer")],
-        "data": state["data"]
+        "data": data
     }

@@ -14,17 +14,22 @@
 - **구조화된 컬러 로깅**: `colorlog` 기반의 단계별 로그 출력.
 - **LangSmith 연동**: `LANGCHAIN_TRACING_V2=true`일 때 추적을 켜도록 구성.
 - **LLM 호출 간 지연 옵션**: `--llm-call-delay-seconds`로 RPM 완화를 위한 전역 throttle을 적용 가능.
+- **중앙 설정 모듈**: `config.py`에서 OpenRouter 설정, 호출 지연, Titanic DB 경로를 관리.
 - **OpenRouter content 정규화**: Supervisor가 문자열 또는 리스트 형태의 모델 출력을 JSON 파싱 가능한 텍스트로 정규화.
 - **SQLQueryer 에이전트**: SQLite 기반 Titanic 데이터셋을 분석하는 전용 워커.
-- **테스트 환경**: `pytest` 기준 8개 테스트가 통과하는 상태.
+- **전역 supervisor 제거**: 그래프별 Supervisor runnable을 주입해 전역 상태 의존성을 제거.
+- **불변에 가까운 상태 갱신**: 워커가 입력 `AgentState["data"]`를 직접 수정하지 않고 새 partial state를 반환.
+- **수동 API 체크 스크립트 정리**: OpenRouter 확인 스크립트를 `scripts/` 모듈로 이동.
+- **테스트 환경**: `pytest` 기준 11개 테스트가 통과하는 상태.
 
 ### 최근 검증 결과
 - `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q`
-- 결과: `10 passed`
-- `main.py`는 OpenRouter/Nemotron 전환 후 smoke mode까지 재검증 완료
+- 결과: `11 passed`
+- `main.py`는 OpenRouter/GLM 4.5 Air free 기본 모델 기준으로 검증됨.
 
 ### 프로젝트 구조
 - `main.py`: 실시간 스트리밍 루프 및 LangGraph 워크플로우 실행 엔트리 포인트.
+- `config.py`: OpenRouter, LLM throttle, Titanic DB 경로 설정 모듈.
 - `logger.py`: 중앙 집중식 컬러 로깅 시스템 모듈.
 - `setup_db.py`: Titanic 데이터셋 다운로드 및 SQLite DB 생성 스크립트.
 - `state.py`: 전역 `AgentState` 정의 (메시지, 공유 데이터, 에러 상태 포함).
@@ -34,9 +39,12 @@
   - `sql_queryer.py`: 구조화된 데이터(SQL) 분석 및 결과 공유.
   - `writer.py`: 공유 데이터를 우선 참조하여 최종 결과 합성.
 - `tests/`: 유닛 및 통합 테스트 코드.
+- `scripts/`: OpenRouter 연결 및 structured output 수동 확인 스크립트.
 
 ## 향후 계획 / 다음 단계
 - [ ] LangSmith 추적 경고가 네트워크 의존적이므로, 오프라인 환경용 가드 추가.
+- [ ] `process_turn`의 수동 state 병합 로직을 LangGraph state reducer와 더 명확히 정렬.
+- [ ] `setup_db.py`에 CLI 옵션과 실패 시 non-zero exit 처리를 추가.
 - [ ] 더 다양한 데이터 소스 및 API 연동 (예: Notion, Slack).
 - [ ] 웹 기반 UI (Streamlit 등) 추가.
 - [ ] 다중 사용자 세션 관리 및 영속성(Persistence) 강화.
@@ -44,4 +52,5 @@
 ## 환경 요구 사항
 - Python >= 3.11
 - OPENROUTER_API_KEY (`.env` 파일에 설정)
+- 선택: TITANIC_DB_PATH (`titanic.db`가 기본값)
 - `uv` 패키지 매니저 사용 권장.
