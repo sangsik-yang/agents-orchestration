@@ -1,2 +1,40 @@
-titanic.db
+# Environment and secrets
 .env
+.env.*
+!.env.example
+
+# Local databases and generated data
+titanic.db
+*.sqlite
+*.sqlite3
+*.db
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build and packaging outputs
+build/
+dist/
+*.egg-info/
+
+# Tool caches
+.cache/
+.uv-cache/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
