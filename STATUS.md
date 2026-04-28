@@ -20,11 +20,12 @@
 - **전역 supervisor 제거**: 그래프별 Supervisor runnable을 주입해 전역 상태 의존성을 제거.
 - **불변에 가까운 상태 갱신**: 워커가 입력 `AgentState["data"]`를 직접 수정하지 않고 새 partial state를 반환.
 - **수동 API 체크 스크립트 정리**: OpenRouter 확인 스크립트를 `scripts/` 모듈로 이동.
-- **테스트 환경**: `pytest` 기준 11개 테스트가 통과하는 상태.
+- **DB 초기화 CLI**: `setup_db.py`에서 `--csv-url`, `--db-path`, `--table-name` 옵션과 실패 시 non-zero exit code를 지원.
+- **테스트 환경**: `pytest` 기준 14개 테스트가 통과하는 상태.
 
 ### 최근 검증 결과
 - `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q`
-- 결과: `11 passed`
+- 결과: `14 passed`
 - `main.py`는 OpenRouter/GLM 4.5 Air free 기본 모델 기준으로 검증됨.
 
 ### 프로젝트 구조
@@ -44,7 +45,6 @@
 ## 향후 계획 / 다음 단계
 - [ ] LangSmith 추적 경고가 네트워크 의존적이므로, 오프라인 환경용 가드 추가.
 - [ ] `process_turn`의 수동 state 병합 로직을 LangGraph state reducer와 더 명확히 정렬.
-- [ ] `setup_db.py`에 CLI 옵션과 실패 시 non-zero exit 처리를 추가.
 - [ ] 더 다양한 데이터 소스 및 API 연동 (예: Notion, Slack).
 - [ ] 웹 기반 UI (Streamlit 등) 추가.
 - [ ] 다중 사용자 세션 관리 및 영속성(Persistence) 강화.

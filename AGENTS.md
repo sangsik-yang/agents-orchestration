@@ -14,6 +14,7 @@
 
 - `uv sync`: install dependencies from `pyproject.toml` and `uv.lock`.
 - `uv run setup_db.py`: create or refresh the local SQLite Titanic database.
+- `uv run setup_db.py --csv-url ./data/titanic.csv --db-path ./data/titanic.db --table-name titanic`: load a custom CSV into a chosen SQLite table.
 - `uv run main.py`: run the interactive agent CLI.
 - `uv run main.py --smoke-test`: run one built-in non-interactive query.
 - `uv run main.py --query "Analyze the Titanic dataset."`: run one custom query.
@@ -32,7 +33,7 @@ Avoid broad refactors when changing one agent. Do not commit generated caches su
 
 The project uses pytest. Add tests under `tests/` using the `test_*.py` pattern. Mock LLM calls and external services; automated tests should not require OpenRouter, DuckDuckGo, LangSmith, or network access. For CLI behavior, follow `tests/test_main.py` and patch `create_llm`, `build_graph`, or node functions.
 
-Run `uv run pytest -q` before opening a PR. Current expected baseline is 11 passing tests.
+Run `uv run pytest -q` before opening a PR. Current expected baseline is 14 passing tests.
 
 ## Commit & Pull Request Guidelines
 

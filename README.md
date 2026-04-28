@@ -56,6 +56,10 @@
     ```bash
     uv run setup_db.py
     ```
+   - 커스텀 CSV/DB/table 지정:
+     ```bash
+     uv run setup_db.py --csv-url ./data/titanic.csv --db-path ./data/titanic.db --table-name titanic
+     ```
 2.  에이전트 시스템 실행:
     ```bash
     uv run main.py
@@ -79,7 +83,7 @@
      ```
 
 ### 현재 검증 상태
-- `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q` 기준 `11 passed`
+- `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q` 기준 `14 passed`
 - `uv run main.py --smoke-test`로 비대화형 1회 실행 가능
 - `.env`의 `OPENROUTER_API_KEY`를 사용해 OpenRouter API에 연결
 
@@ -95,3 +99,4 @@
 - Supervisor 노드는 전역 인스턴스 없이 그래프별로 주입됩니다.
 - 워커 노드는 입력 `AgentState`를 직접 수정하지 않고, 갱신할 partial state를 반환합니다.
 - `TITANIC_DB_PATH`를 사용해 테스트/로컬 DB 경로를 분리할 수 있습니다.
+- `setup_db.py`는 `--csv-url`, `--db-path`, `--table-name` 옵션을 지원하며 실패 시 non-zero exit code를 반환합니다.

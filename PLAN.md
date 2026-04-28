@@ -10,15 +10,15 @@
   - `uv run python -m scripts.check_openrouter_api`
   - `uv run python -m scripts.check_openrouter_structured_output`
 - Added tests for configurable DB paths and worker state immutability.
+- Added `setup_db.py` CLI options for custom CSV source, DB output path, and table name.
 
 ## Current Baseline
 - Test command: `UV_CACHE_DIR=/tmp/uv-cache uv run pytest -q`
-- Current result: `11 passed`
+- Current result: `14 passed`
 - Known noise: when `LANGCHAIN_TRACING_V2=true`, LangSmith network calls can emit DNS/connection warnings in offline environments.
 
 ## Next Work
 1. Add an offline/CI guard for LangSmith tracing so tests stay quiet without requiring network access.
 2. Tighten `process_turn` state handling so manual state updates and LangGraph reducers are clearly separated.
-3. Add CLI options to `setup_db.py` for custom CSV source and DB output path.
-4. Improve SQLQueryer tests with representative intermediate tool-call structures.
-5. Consider a lightweight web UI only after the CLI workflow and state model are stable.
+3. Improve SQLQueryer tests with representative intermediate tool-call structures.
+4. Consider a lightweight web UI only after the CLI workflow and state model are stable.
