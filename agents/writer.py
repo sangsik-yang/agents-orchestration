@@ -4,7 +4,7 @@ from logger import logger
 import json
 from typing import Any
 
-def writer_node(state, llm: Any):
+def writer_node(state, llm: Any, runtime_config: dict[str, Any] | None = None):
     """Writer agent logic."""
     writer_agent = create_react_agent(
         llm,
@@ -20,9 +20,10 @@ def writer_node(state, llm: Any):
     
     # We invoke with a fresh state that includes the enriched context
     # but still pass the previous messages to maintain continuity if needed.
+    invoke_kwargs = {"config": runtime_config} if runtime_config else {}
     result = writer_agent.invoke({
         "messages": state["messages"] + [HumanMessage(content=enriched_input)]
-    })
+    }, **invoke_kwargs)
     
     last_msg = result["messages"][-1]
     

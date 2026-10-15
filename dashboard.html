@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agents Orchestration Dashboard</title>
+  <style>
+    :root {
+      --ink: #17211b;
+      --muted: #5f6f64;
+      --paper: #f8f3e7;
+      --paper-2: #fffaf0;
+      --line: rgba(23, 33, 27, 0.14);
+      --forest: #0f3b2f;
+      --sage: #9ebd98;
+      --moss: #627f43;
+      --clay: #c7673f;
+      --amber: #e8ac45;
+      --blue: #356f91;
+      --shadow: 0 22px 70px rgba(28, 43, 30, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at 9% 4%, rgba(232, 172, 69, 0.45), transparent 24rem),
+        radial-gradient(circle at 87% 14%, rgba(98, 127, 67, 0.26), transparent 28rem),
+        linear-gradient(135deg, #f5ead2 0%, #f7f2e5 46%, #dde6d2 100%);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(23, 33, 27, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 33, 27, 0.035) 1px, transparent 1px);
+      background-size: 38px 38px;
+      mask-image: linear-gradient(to bottom, black, transparent 88%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      width: min(1220px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(248, 243, 231, 0.72);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 72px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-size: 20px;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background:
+        linear-gradient(135deg, var(--forest), #1d674f),
+        var(--forest);
+      box-shadow: inset 0 -9px 0 rgba(255, 255, 255, 0.12);
+      display: grid;
+      place-items: center;
+      color: #f9efd9;
+      font-family: "Courier New", monospace;
+      font-size: 15px;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .nav a {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 9px 12px;
+      background: rgba(255, 250, 240, 0.55);
+    }
+
+    .hero {
+      min-height: calc(100vh - 72px);
+      display: grid;
+      grid-template-columns: 1.04fr 0.96fr;
+      align-items: center;
+      gap: 42px;
+      padding: 76px 0 48px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(15, 59, 47, 0.24);
+      border-radius: 999px;
+      padding: 9px 13px;
+      color: var(--forest);
+      background: rgba(255, 250, 240, 0.62);
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2f9b62;
+      box-shadow: 0 0 0 7px rgba(47, 155, 98, 0.16);
+    }
+
+    h1 {
+      margin: 22px 0 18px;
+      max-width: 760px;
+      font-size: clamp(48px, 7vw, 92px);
+      line-height: 0.88;
+      letter-spacing: -0.075em;
+    }
+
+    .lead {
+      max-width: 650px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      border-radius: 999px;
+      padding: 0 20px;
+      border: 1px solid var(--forest);
+      background: var(--forest);
+      color: #fff8e8;
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .button.secondary {
+      background: rgba(255, 250, 240, 0.68);
+      color: var(--forest);
+    }
+
+    .status-panel {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 34px;
+      padding: 26px;
+      background:
+        linear-gradient(145deg, rgba(255, 250, 240, 0.92), rgba(232, 236, 215, 0.88));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: rise 700ms ease both;
+    }
+
+    .status-panel::after {
+      content: "";
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      right: -70px;
+      top: -76px;
+      border-radius: 50%;
+      background: rgba(199, 103, 63, 0.18);
+    }
+
+    .panel-title {
+      position: relative;
+      margin: 0 0 18px;
+      font-size: 24px;
+      letter-spacing: -0.04em;
+    }
+
+    .metric-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .metric {
+      min-height: 142px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      background: rgba(255, 250, 240, 0.76);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 38px;
+      line-height: 1;
+      letter-spacing: -0.06em;
+      margin-bottom: 12px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 15px;
+    }
+
+    .metric.accent {
+      background: var(--forest);
+      color: #fff8e8;
+      border-color: transparent;
+    }
+
+    .metric.accent span {
+      color: rgba(255, 248, 232, 0.78);
+    }
+
+    section.slide {
+      min-height: 100vh;
+      padding: 96px 0;
+      display: grid;
+      align-items: center;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 34px;
+    }
+
+    .kicker {
+      color: var(--clay);
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin: 10px 0 0;
+      max-width: 820px;
+      font-size: clamp(34px, 4.6vw, 64px);
+      line-height: 0.96;
+      letter-spacing: -0.065em;
+    }
+
+    .section-note {
+      max-width: 420px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 24px;
+      background: rgba(255, 250, 240, 0.72);
+      box-shadow: 0 14px 42px rgba(28, 43, 30, 0.08);
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 22px 58px rgba(28, 43, 30, 0.14);
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      letter-spacing: -0.035em;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    .card p {
+      margin: 0;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    li + li {
+      margin-top: 8px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: rgba(248, 243, 231, 0.7);
+      color: var(--forest);
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .node {
+      position: relative;
+      border: 1px solid rgba(15, 59, 47, 0.18);
+      border-radius: 28px;
+      padding: 24px;
+      background: rgba(255, 250, 240, 0.78);
+      min-height: 170px;
+    }
+
+    .node.dark {
+      background: var(--forest);
+      color: #fff8e8;
+    }
+
+    .node.dark p {
+      color: rgba(255, 248, 232, 0.78);
+    }
+
+    .node-label {
+      font-family: "Courier New", monospace;
+      color: var(--clay);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 12px;
+    }
+
+    .node.dark .node-label {
+      color: var(--amber);
+    }
+
+    .node h3 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+    }
+
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .worker-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .worker {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      background: rgba(248, 243, 231, 0.72);
+    }
+
+    .worker strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+
+    .worker span {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .step {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      min-height: 112px;
+      padding: 15px;
+      background: rgba(255, 250, 240, 0.72);
+    }
+
+    .step b {
+      display: block;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      color: var(--clay);
+      margin-bottom: 9px;
+    }
+
+    .step span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 16px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      background: rgba(255, 250, 240, 0.7);
+    }
+
+    .timeline-item time {
+      font-family: "Courier New", monospace;
+      color: var(--forest);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .timeline-item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .roadmap {
+      counter-reset: roadmap;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .roadmap-item {
+      counter-increment: roadmap;
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 22px 22px 22px 72px;
+      background: rgba(255, 250, 240, 0.73);
+      min-height: 140px;
+    }
+
+    .roadmap-item::before {
+      content: counter(roadmap, decimal-leading-zero);
+      position: absolute;
+      left: 20px;
+      top: 22px;
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--forest);
+      color: #fff8e8;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .roadmap-item h3 {
+      margin: 0 0 8px;
+      font-size: 21px;
+      letter-spacing: -0.03em;
+    }
+
+    .roadmap-item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .footer {
+      padding: 42px 0 70px;
+      color: var(--muted);
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .split,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+
+      .cards,
+      .roadmap {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .pipeline {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .section-head {
+        align-items: start;
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .shell {
+        width: min(100% - 24px, 1220px);
+      }
+
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px 0;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+
+      .hero {
+        padding-top: 46px;
+      }
+
+      .metric-grid,
+      .cards,
+      .roadmap,
+      .pipeline,
+      .timeline-item {
+        grid-template-columns: 1fr;
+      }
+
+      section.slide {
+        min-height: auto;
+        padding: 58px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="#top" aria-label="dashboard top">
+        <span class="brand-mark">AO</span>
+        <span>Agents Orchestration</span>
+      </a>
+      <nav class="nav" aria-label="presentation sections">
+        <a href="#status">Status</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#implementation">Code</a>
+        <a href="#validation">Validation</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="shell hero">
+      <div>
+        <div class="eyebrow"><span class="pulse"></span> 2026-10-15 current snapshot</div>
+        <h1>계층적 멀티 에이전트 오케스트레이션 현황판</h1>
+        <p class="lead">
+          LangGraph 기반 Supervisor가 Researcher, SQLQueryer, Writer를 라우팅하고,
+          공유 메모리와 retry/self-correction으로 복합 질의를 처리하는 CLI 중심 시스템입니다.
+        </p>
+        <div class="hero-actions">
+          <a class="button" href="#architecture">Architecture 보기</a>
+          <a class="button secondary" href="#roadmap">앞으로 계획 보기</a>
+        </div>
+      </div>
+
+      <aside class="status-panel" aria-label="project summary">
+        <h2 class="panel-title">Executive Snapshot</h2>
+        <div class="metric-grid">
+          <div class="metric accent">
+            <strong>24/24</strong>
+            <span>현재 테스트 통과. `.venv/bin/python -m pytest -q` 기준.</span>
+          </div>
+          <div class="metric">
+            <strong>4</strong>
+            <span>Supervisor, Researcher, SQLQueryer, Writer 노드로 구성.</span>
+          </div>
+          <div class="metric">
+            <strong>3x</strong>
+            <span>동일 worker 실패 시 최대 3회까지 correction instruction 재시도.</span>
+          </div>
+          <div class="metric">
+            <strong>CLI</strong>
+            <span>Interactive, smoke-test, one-shot query 실행 경로 제공.</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section id="status" class="slide">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <div class="kicker">01 / Current State</div>
+            <h2>지금까지 구현된 핵심 기능</h2>
+          </div>
+          <p class="section-note">
+            현재 코드는 단순 LLM wrapper가 아니라, worker별 역할과 shared state를 명확히 둔 실행 그래프입니다.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="card">
+            <h3>Supervisor-Worker 라우팅</h3>
+            <p>Supervisor가 대화 이력과 data 상태를 보고 다음 worker와 구체적인 instruction을 JSON으로 결정합니다.</p>
+            <div class="tag-row">
+              <span class="tag">LangGraph</span>
+              <span class="tag">RouteResponse</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Shared Scratchpad</h3>
+            <p>`AgentState["data"]`에 검색 결과, SQL 결과, 실행 query를 저장해 Writer가 최종 합성 시 우선 참조합니다.</p>
+            <div class="tag-row">
+              <span class="tag">AgentState</span>
+              <span class="tag">data</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Self-Correction</h3>
+            <p>worker 실패 시 last_error를 Supervisor로 되돌리고, 같은 worker에 correction instruction을 내려 재시도합니다.</p>
+            <div class="tag-row">
+              <span class="tag">retry_count</span>
+              <span class="tag">last_error</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>OpenRouter LLM 통합</h3>
+            <p>`ChatOpenAI` 호환 인터페이스로 OpenRouter endpoint를 사용하며 기본 무료 라우터는 `openrouter/free`입니다. 호출마다 모델이 달라질 수 있습니다.</p>
+            <div class="tag-row">
+              <span class="tag">OPENROUTER_API_KEY</span>
+              <span class="tag">temperature=0</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Runtime Controls</h3>
+            <p>callback handler가 LLM/tool 호출 로그를 남기고, `MIN_API_DELAY_SECONDS` 또는 CLI 옵션으로 호출 간격을 제어합니다.</p>
+            <div class="tag-row">
+              <span class="tag">APICallLogger</span>
+              <span class="tag">throttle</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>검증 가능한 CLI</h3>
+            <p>`--smoke-test`, `--query`, interactive loop를 모두 제공해 자동 테스트와 실제 사용 흐름을 분리했습니다.</p>
+            <div class="tag-row">
+              <span class="tag">smoke-test</span>
+              <span class="tag">one-shot</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture" class="slide">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <div class="kicker">02 / Architecture</div>
+            <h2>Supervisor 중심의 폐루프 실행 구조</h2>
+          </div>
+          <p class="section-note">
+            worker는 직접 다음 단계를 결정하지 않습니다. 모든 worker 결과는 Supervisor로 돌아가며,
+            Supervisor가 다음 action 또는 FINISH를 결정합니다.
+          </p>
+        </div>
+
+        <div class="flow">
+          <article class="node">
+            <div class="node-label">Input Layer</div>
+            <h3>User / CLI</h3>
+            <p>Interactive 입력, smoke query, custom `--query`를 받아 fresh state에 HumanMessage로 추가합니다.</p>
+          </article>
+
+          <article class="node dark">
+            <div class="node-label">Control Plane</div>
+            <h3>Supervisor</h3>
+            <p>라우팅, 오류 분석, retry limit, finalization 판단을 담당합니다. 출력은 `{ next, instruction }` JSON 계약입니다.</p>
+          </article>
+
+          <article class="node">
+            <div class="node-label">Shared State</div>
+            <h3>AgentState</h3>
+            <p>messages, next, data, retry_count, last_error를 보관합니다. data는 worker 간 명시적 공유 메모리입니다.</p>
+          </article>
+        </div>
+
+        <div class="pipeline" aria-label="runtime pipeline">
+          <div class="step"><b>START</b><span>StateGraph가 Supervisor로 진입</span></div>
+          <div class="step"><b>ROUTE</b><span>Supervisor가 worker 선택</span></div>
+          <div class="step"><b>WORK</b><span>Researcher / SQLQueryer / Writer 실행</span></div>
+          <div class="step"><b>STORE</b><span>결과를 messages/data에 누적</span></div>
+          <div class="step"><b>REVIEW</b><span>Supervisor가 다음 단계 판단</span></div>
+          <div class="step"><b>FINISH</b><span>Writer 응답 후 종료</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="implementation" class="slide">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <div class="kicker">03 / Implementation Map</div>
+            <h2>코드 모듈별 책임</h2>
+          </div>
+          <p class="section-note">
+            관심사가 비교적 잘 분리되어 있습니다. main은 graph/run loop, agents는 worker logic,
+            runtime_controls는 observability와 throttle을 담당합니다.
+          </p>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <h3>Worker Stack</h3>
+            <div class="worker-stack">
+              <div class="worker">
+                <strong>Researcher</strong>
+                <span>DuckDuckGo search tool을 가진 ReAct agent. `search_history`를 shared data에 누적.</span>
+              </div>
+              <div class="worker">
+                <strong>SQLQueryer</strong>
+                <span>`sqlite:///titanic.db`에 연결하는 LangChain SQL agent. 결과와 실행 SQL을 data에 저장.</span>
+              </div>
+              <div class="worker">
+                <strong>Writer</strong>
+                <span>shared data를 JSON context로 주입받아 최종 요약과 보고서를 합성.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Key Files</h3>
+            <ul>
+              <li>`main.py`: LLM 생성, graph assemble, CLI args, stream 처리.</li>
+              <li>`state.py`: `AgentState` typed state 계약.</li>
+              <li>`agents/supervisor.py`: 라우팅 prompt, JSON parsing, content normalization.</li>
+              <li>`runtime_controls.py`: LLM/tool callback logging, API delay throttle.</li>
+              <li>`logger.py`: colorlog 기반 중앙 로깅.</li>
+              <li>`tests/`: graph entry, node behavior, runtime controls regression tests.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="validation" class="slide">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <div class="kicker">04 / Validation</div>
+            <h2>현재 검증 상태와 남은 리스크</h2>
+          </div>
+          <p class="section-note">
+            단위 테스트는 통과했지만, 외부 API와 웹 검색, LangSmith tracing은 네트워크 조건에 영향을 받습니다.
+          </p>
+        </div>
+
+        <div class="split">
+          <div class="card">
+            <h3>Verified Today</h3>
+            <ul>
+              <li>명령: `.venv/bin/python -m pytest -q`</li>
+              <li>결과: `24 passed`</li>
+              <li>실제 무료 API 실행: Titanic 여성 314명 중 233명 생존, 생존율 74.2%. Writer 요약과 FINISH 성공.</li>
+              <li>검증 범위: smoke mode, non-interactive loop, supervisor routing, list content normalization.</li>
+              <li>검증 범위: researcher/writer/sql worker runtime config 전달, API throttle callback.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Operational Risks</h3>
+            <ul>
+              <li>OpenRouter API key와 네트워크 연결 없이는 실제 LLM 실행 불가.</li>
+              <li>DuckDuckGo 검색 worker는 외부 서비스 상태와 rate limit에 영향.</li>
+              <li>`titanic.db`가 준비되지 않으면 SQLQueryer의 실제 분석 경로 실패 가능.</li>
+              <li>LangSmith 시작 시 연결 실패는 추적 없이 계속 실행. 실행 중 전송 실패는 SDK 정책을 따름.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="roadmap" class="slide">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <div class="kicker">05 / Roadmap</div>
+            <h2>앞으로의 개발 계획</h2>
+          </div>
+          <p class="section-note">
+            다음 단계는 데모 완성도가 아니라 운영 안정성과 사용성 확장에 우선순위를 두는 것이 합리적입니다.
+          </p>
+        </div>
+
+        <div class="roadmap">
+          <article class="roadmap-item">
+            <h3>Observability Fallback</h3>
+            <p>시작 시 LangSmith 연결 실패 fallback 완료. 다음 단계는 실행 중 연결 단절 시 SDK 재시도 정책 보완입니다.</p>
+          </article>
+          <article class="roadmap-item">
+            <h3>Data Source Expansion</h3>
+            <p>SQLite Titanic 예제에서 벗어나 Notion, Slack, Google Drive, 내부 DB 등 실제 업무 데이터 소스를 연결합니다.</p>
+          </article>
+          <article class="roadmap-item">
+            <h3>Web UI Layer</h3>
+            <p>현재 CLI 실행을 Streamlit/FastAPI 기반 UI로 확장해 실행 로그, shared memory, worker decision을 시각화합니다.</p>
+          </article>
+          <article class="roadmap-item">
+            <h3>Session Persistence</h3>
+            <p>다중 사용자와 장기 task를 위해 state checkpoint, conversation persistence, per-session config를 도입합니다.</p>
+          </article>
+          <article class="roadmap-item">
+            <h3>Evaluation Harness</h3>
+            <p>고정 질의 세트와 expected behavior를 정의해 routing 품질, SQL 정확도, writer faithfulness를 회귀 검증합니다.</p>
+          </article>
+          <article class="roadmap-item">
+            <h3>Tool Safety Policy</h3>
+            <p>worker별 tool permission, query allowlist, retry budget, failure escalation 정책을 명시적으로 분리합니다.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="shell">
+        <div class="section-head">
+          <div>
+            <div class="kicker">06 / Suggested Narrative</div>
+            <h2>발표 흐름</h2>
+          </div>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <time>1 min</time>
+            <p>문제 정의: 단일 LLM 호출이 아니라, research/data/writing 업무를 역할 기반으로 분리해야 하는 이유.</p>
+          </div>
+          <div class="timeline-item">
+            <time>2 min</time>
+            <p>현재 구현: Supervisor-Worker graph, shared scratchpad, OpenRouter, CLI 실행 모드 설명.</p>
+          </div>
+          <div class="timeline-item">
+            <time>2 min</time>
+            <p>Architecture: Supervisor 폐루프, worker 결과 저장, error feedback과 retry limit 동작 방식.</p>
+          </div>
+          <div class="timeline-item">
+            <time>1 min</time>
+            <p>검증: 24개 테스트 통과, 실제 SQL 분석과 Writer 요약 성공, 남은 운영 리스크.</p>
+          </div>
+          <div class="timeline-item">
+            <time>1 min</time>
+            <p>Next: offline-safe observability, UI, persistence, evaluation harness 순서로 확장.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    Generated from repository snapshot: agents-orchestration · LangGraph + OpenRouter · 2026-10-15
+  </footer>
+</body>
+</html>

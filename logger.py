@@ -17,8 +17,8 @@ def setup_logger(name="agents-orchestration"):
     # Standard format: [TIME] [LEVEL] [LOGGER_NAME] - MESSAGE
     # Colored format:
     formatter = ColoredFormatter(
-        "%(log_color)s[%(levelname)s]%(reset)s %(blue)s[%(name)s]%(reset)s %(message)s",
-        datefmt=None,
+        "%(log_color)s[%(levelname)s]%(reset)s %(blue)s[%(name)s]%(reset)s %(white)s%(asctime)s%(reset)s %(message)s",
+        datefmt="%H:%M:%S",
         reset=True,
         log_colors={
             'DEBUG':    'cyan',

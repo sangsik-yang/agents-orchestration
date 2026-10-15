@@ -8,7 +8,7 @@ from typing import Any
 search_tool = DuckDuckGoSearchRun()
 tools = [search_tool]
 
-def researcher_node(state, llm: Any):
+def researcher_node(state, llm: Any, runtime_config: dict[str, Any] | None = None):
     """Researcher agent logic using a ReAct agent."""
     researcher_agent = create_react_agent(
         llm, 
@@ -17,7 +17,8 @@ def researcher_node(state, llm: Any):
     )
     
     # Run the agent
-    result = researcher_agent.invoke(state)
+    invoke_kwargs = {"config": runtime_config} if runtime_config else {}
+    result = researcher_agent.invoke(state, **invoke_kwargs)
     last_msg = result["messages"][-1]
     
     # Update shared data

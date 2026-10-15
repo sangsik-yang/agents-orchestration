@@ -1,10 +1,13 @@
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-for m in genai.list_models():
-    if 'generateContent' in m.supported_generation_methods:
-        print(m.name)
+model = ChatOpenAI(
+    model=os.getenv("OPENROUTER_MODEL", "openrouter/free"),
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+)
+
+print(model.model_name)

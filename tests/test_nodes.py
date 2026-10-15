@@ -33,6 +33,20 @@ def test_researcher_node(mock_llm, initial_state):
         assert result["messages"][0].content == "Research info"
         mock_create.assert_called_once()
 
+
+def test_researcher_node_passes_runtime_config(mock_llm, initial_state):
+    with patch("agents.researcher.create_react_agent") as mock_create:
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"messages": [AIMessage(content="Research info")]}
+        mock_create.return_value = mock_agent
+
+        runtime_config = {"callbacks": [MagicMock()]}
+        researcher_node(initial_state, mock_llm, runtime_config=runtime_config)
+
+        mock_agent.invoke.assert_called_once()
+        _, kwargs = mock_agent.invoke.call_args
+        assert kwargs["config"] == runtime_config
+
 def test_writer_node(mock_llm, initial_state):
     with patch("agents.writer.create_react_agent") as mock_create:
         mock_agent = MagicMock()
@@ -44,6 +58,20 @@ def test_writer_node(mock_llm, initial_state):
         assert "messages" in result
         assert result["messages"][0].content == "Written summary"
         mock_create.assert_called_once()
+
+
+def test_writer_node_passes_runtime_config(mock_llm, initial_state):
+    with patch("agents.writer.create_react_agent") as mock_create:
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"messages": [AIMessage(content="Written summary")]}
+        mock_create.return_value = mock_agent
+
+        runtime_config = {"callbacks": [MagicMock()]}
+        writer_node(initial_state, mock_llm, runtime_config=runtime_config)
+
+        mock_agent.invoke.assert_called_once()
+        _, kwargs = mock_agent.invoke.call_args
+        assert kwargs["config"] == runtime_config
 
 def test_sql_query_node(mock_llm, initial_state):
     # Mock SQLDatabase and create_sql_agent
@@ -60,3 +88,18 @@ def test_sql_query_node(mock_llm, initial_state):
         assert result["messages"][0].content == "SQL analysis result"
         mock_db.from_uri.assert_called_once_with("sqlite:///titanic.db")
         mock_create.assert_called_once()
+
+
+def test_sql_query_node_passes_runtime_config(mock_llm, initial_state):
+    with patch("agents.sql_queryer.SQLDatabase") as mock_db, \
+         patch("agents.sql_queryer.create_sql_agent") as mock_create:
+
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"output": "SQL analysis result"}
+        mock_create.return_value = mock_agent
+
+        runtime_config = {"callbacks": [MagicMock()]}
+        sql_query_node(initial_state, mock_llm, runtime_config=runtime_config)
+
+        _, kwargs = mock_agent.invoke.call_args
+        assert kwargs["config"] == runtime_config

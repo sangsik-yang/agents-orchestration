@@ -5,7 +5,7 @@ import os
 from logger import logger
 from typing import Any
 
-def sql_query_node(state, llm: Any):
+def sql_query_node(state, llm: Any, runtime_config: dict[str, Any] | None = None):
     """SQL Query worker using LangChain's SQL agent."""
     db = SQLDatabase.from_uri("sqlite:///titanic.db")
     
@@ -21,7 +21,8 @@ def sql_query_node(state, llm: Any):
     # Run the agent
     # We pass the last message (instruction) as the main goal
     last_instruction = state["messages"][-1].content
-    result = sql_agent.invoke({"input": last_instruction})
+    invoke_kwargs = {"config": runtime_config} if runtime_config else {}
+    result = sql_agent.invoke({"input": last_instruction}, **invoke_kwargs)
     
     # Store structured result in shared data
     if "data" not in state:

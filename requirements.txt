@@ -1,5 +1,6 @@
 langgraph
 langchain
+langchain-openai
 duckduckgo-search
 pydantic
 python-dotenv
