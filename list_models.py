@@ -1,13 +1,19 @@
-import os
+import json
+import urllib.request
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from config import OPENROUTER_BASE_URL, get_openrouter_api_key
 
 load_dotenv()
 
-model = ChatOpenAI(
-    model=os.getenv("OPENROUTER_MODEL", "openrouter/free"),
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+request = urllib.request.Request(
+    f"{OPENROUTER_BASE_URL}/models",
+    headers={"Authorization": f"Bearer {get_openrouter_api_key()}"},
 )
 
-print(model.model_name)
+with urllib.request.urlopen(request) as response:
+    payload = json.load(response)
+
+for model in payload.get("data", []):
+    model_id = model.get("id", "")
+    if model_id.endswith(":free"):
+        print(model_id)

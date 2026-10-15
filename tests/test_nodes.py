@@ -26,11 +26,15 @@ def test_researcher_node(mock_llm, initial_state):
         mock_agent = MagicMock()
         mock_agent.invoke.return_value = {"messages": [AIMessage(content="Research info")]}
         mock_create.return_value = mock_agent
+        original_data = initial_state["data"]
         
         result = researcher_node(initial_state, mock_llm)
         
         assert "messages" in result
         assert result["messages"][0].content == "Research info"
+        assert result["data"]["search_history"] == ["Research info"]
+        assert initial_state["data"] is original_data
+        assert initial_state["data"] == {}
         mock_create.assert_called_once()
 
 
@@ -73,7 +77,8 @@ def test_writer_node_passes_runtime_config(mock_llm, initial_state):
         _, kwargs = mock_agent.invoke.call_args
         assert kwargs["config"] == runtime_config
 
-def test_sql_query_node(mock_llm, initial_state):
+def test_sql_query_node(mock_llm, initial_state, monkeypatch):
+    monkeypatch.delenv("TITANIC_DB_PATH", raising=False)
     # Mock SQLDatabase and create_sql_agent
     with patch("agents.sql_queryer.SQLDatabase") as mock_db, \
          patch("agents.sql_queryer.create_sql_agent") as mock_create:
@@ -81,11 +86,15 @@ def test_sql_query_node(mock_llm, initial_state):
         mock_agent = MagicMock()
         mock_agent.invoke.return_value = {"output": "SQL analysis result"}
         mock_create.return_value = mock_agent
+        original_data = initial_state["data"]
         
         result = sql_query_node(initial_state, mock_llm)
         
         assert "messages" in result
         assert result["messages"][0].content == "SQL analysis result"
+        assert result["data"]["last_sql_result"] == "SQL analysis result"
+        assert initial_state["data"] is original_data
+        assert initial_state["data"] == {}
         mock_db.from_uri.assert_called_once_with("sqlite:///titanic.db")
         mock_create.assert_called_once()
 

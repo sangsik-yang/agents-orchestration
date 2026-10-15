@@ -1,7 +1,9 @@
 import argparse
 import os
 import sqlite3
+import time
 from functools import partial
+from threading import Lock
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
@@ -9,8 +11,18 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import HumanMessage, AIMessage
 from langsmith import tracing_context
+from langchain_core.messages import BaseMessage
+from pydantic import PrivateAttr
 
 # Local imports
+from config import (
+    OPENROUTER_BASE_URL,
+    get_openrouter_api_key,
+    get_openrouter_headers,
+    get_openrouter_model,
+    get_titanic_db_path,
+    resolve_llm_delay_seconds,
+)
 from state import AgentState
 from agents.supervisor import create_supervisor
 from agents.researcher import researcher_node
@@ -32,23 +44,65 @@ DEFAULT_SMOKE_QUERY = (
     "Analyze the Titanic dataset: What was the survival rate of female passengers? "
     "Then summarize the finding."
 )
-DEFAULT_DB_PATH = "titanic.db"
 
-# Global references
-supervisor_instance = None
+class ThrottledChatOpenAI(ChatOpenAI):
+    """ChatOpenAI wrapper that spaces out API calls to avoid RPM bursts."""
 
-def create_llm() -> ChatOpenAI:
+    call_delay_seconds: float = 0.0
+    _throttle_lock: Lock = PrivateAttr(default_factory=Lock)
+    _next_available_at: float = PrivateAttr(default=0.0)
+
+    def _wait_for_slot(self) -> None:
+        delay = max(0.0, self.call_delay_seconds)
+        if delay <= 0:
+            return
+
+        with self._throttle_lock:
+            now = time.monotonic()
+            if self._next_available_at > now:
+                time.sleep(self._next_available_at - now)
+            self._next_available_at = time.monotonic() + delay
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ):
+        self._wait_for_slot()
+        return super()._generate(
+            messages=messages,
+            stop=stop,
+            run_manager=run_manager,
+            **kwargs,
+        )
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: Any = None,
+        **kwargs: Any,
+    ):
+        self._wait_for_slot()
+        return await super()._agenerate(
+            messages=messages,
+            stop=stop,
+            run_manager=run_manager,
+            **kwargs,
+        )
+
+def create_llm(call_delay_seconds: Optional[float] = None) -> ThrottledChatOpenAI:
     """Create the OpenRouter-backed chat model."""
-    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-    if not openrouter_api_key:
-        raise RuntimeError("Missing API Key: OPENROUTER_API_KEY must be set in .env")
-
-    return ChatOpenAI(
-        model=os.getenv("OPENROUTER_MODEL", "openrouter/free"),
-        api_key=openrouter_api_key,
-        base_url=os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+    return ThrottledChatOpenAI(
+        model=get_openrouter_model(),
+        openai_api_key=get_openrouter_api_key(),
+        base_url=os.getenv("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL),
         temperature=0,
-        timeout=120,
+        request_timeout=120,
+        default_headers=get_openrouter_headers(),
+        call_delay_seconds=resolve_llm_delay_seconds(call_delay_seconds),
     )
 
 def create_initial_state() -> AgentState:
@@ -61,8 +115,9 @@ def create_initial_state() -> AgentState:
         "last_error": None,
     }
 
-def validate_database(db_path: str = DEFAULT_DB_PATH) -> None:
+def validate_database(db_path: str | None = None) -> None:
     """Verify that the local Titanic SQLite database is ready for SQLQueryer."""
+    db_path = str(get_titanic_db_path()) if db_path is None else db_path
     if not os.path.exists(db_path):
         raise RuntimeError(
             f"Missing database: {db_path}. Run `uv run setup_db.py` before executing SQL tasks."
@@ -86,8 +141,7 @@ def validate_database(db_path: str = DEFAULT_DB_PATH) -> None:
     except sqlite3.Error as exc:
         raise RuntimeError(f"Invalid database: {db_path}. SQLite error: {exc}") from exc
 
-def call_supervisor(state: AgentState, runtime_config: dict[str, Any] | None = None) -> Dict[str, Any]:
-    global supervisor_instance
+def call_supervisor(state: AgentState, supervisor: Any, runtime_config: dict[str, Any] | None = None) -> Dict[str, Any]:
     try:
         log_node_start("Supervisor")
         
@@ -96,7 +150,7 @@ def call_supervisor(state: AgentState, runtime_config: dict[str, Any] | None = N
         last_error = state.get("last_error")
         
         invoke_kwargs = {"config": runtime_config} if runtime_config else {}
-        result = supervisor_instance.invoke(state, **invoke_kwargs)
+        result = supervisor.invoke(state, **invoke_kwargs)
         
         # Logic to update retry count
         new_retry_count = state.get("retry_count", 0)
@@ -168,12 +222,11 @@ def run_sql_queryer(state: AgentState, llm: Any, runtime_config: dict[str, Any] 
 
 def build_graph(llm: Any, runtime_config: dict[str, Any] | None = None):
     """Assemble the hierarchical graph."""
-    global supervisor_instance
     workflow = StateGraph(AgentState)
     
-    supervisor_instance = create_supervisor(llm)
+    supervisor = create_supervisor(llm)
     
-    workflow.add_node("Supervisor", partial(call_supervisor, runtime_config=runtime_config))
+    workflow.add_node("Supervisor", partial(call_supervisor, supervisor=supervisor, runtime_config=runtime_config))
     workflow.add_node("Researcher", partial(run_researcher, llm=llm, runtime_config=runtime_config))
     workflow.add_node("Writer", partial(run_writer, llm=llm, runtime_config=runtime_config))
     workflow.add_node("SQLQueryer", partial(run_sql_queryer, llm=llm, runtime_config=runtime_config))
@@ -311,7 +364,7 @@ def parse_args(argv=None):
         help="Run a single non-interactive turn with a custom query and exit.",
     )
     parser.add_argument(
-        "--min-api-delay",
+        "--min-api-delay", "--llm-call-delay-seconds",
         type=float,
         default=None,
         help="Minimum delay in seconds between LLM API calls. Defaults to MIN_API_DELAY_SECONDS or 0.",
@@ -330,7 +383,7 @@ def parse_min_api_delay(cli_delay: float | None) -> float:
 
     env_delay = os.getenv("MIN_API_DELAY_SECONDS")
     if not env_delay:
-        return 0.0
+        return resolve_llm_delay_seconds()
 
     try:
         return max(0.0, float(env_delay))
@@ -351,12 +404,13 @@ def run(args):
     """Run the workflow within the selected tracing context."""
     try:
         validate_database()
-        llm = create_llm()
+        min_api_delay = parse_min_api_delay(args.min_api_delay)
+        # CLI throttling belongs to the shared callback, including tool model calls.
+        llm = create_llm(call_delay_seconds=0)
     except RuntimeError as exc:
         logger.error(str(exc))
         return 1
 
-    min_api_delay = parse_min_api_delay(args.min_api_delay)
     runtime_config = create_runtime_config(min_api_delay)
 
     logger.info(f"🔧 API call delay configured to {min_api_delay:.2f}s")

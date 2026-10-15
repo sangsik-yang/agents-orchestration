@@ -10,6 +10,7 @@
 - **자가 복구 (Self-Correction)**: 작업 중 에러 발생 시 Supervisor가 원인을 분석하여 최대 3회까지 자동 수정 및 재시도를 지시합니다.
 - **구조화된 로깅 (Logging & Observability)**: `colorlog`를 통한 단계별 컬러 로깅과 LangSmith 연동을 지원하여 시스템 흐름을 명확하게 파악할 수 있습니다.
 - **OpenRouter 기반**: 기본적으로 `openrouter/free` 무료 라우터를 활용하여 추론합니다.
+- **중앙 설정 모듈**: `config.py`에서 모델, 호출 지연, `TITANIC_DB_PATH`를 관리합니다.
 - **전문 워커 구성**:
     - **Researcher**: DuckDuckGo를 이용한 실시간 웹 검색 및 정보 누적.
     - **SQLQueryer**: SQLite 기반 Titanic 데이터셋 분석 및 결과 데이터화.
@@ -46,6 +47,7 @@
     # Useful when the free tier rate limits are too aggressive.
     # Default: 0 (no enforced delay)
     MIN_API_DELAY_SECONDS=1.5
+    TITANIC_DB_PATH=titanic.db
     
     # LangSmith (옵션: 추적 기능을 사용하려면 추가)
     LANGCHAIN_TRACING_V2=false
@@ -62,6 +64,14 @@
     ```bash
     uv run setup_db.py
     ```
+   - 커스텀 CSV와 DB 경로 지정:
+     ```bash
+     uv run setup_db.py --csv-url ./data/titanic.csv --db-path ./data/titanic.db --table-name titanic
+     ```
+   - 커스텀 CSV/DB/table 지정:
+     ```bash
+     uv run setup_db.py --csv-url ./data/titanic.csv --db-path ./data/titanic.db --table-name titanic
+     ```
 2.  에이전트 시스템 실행:
     ```bash
     uv run main.py
@@ -84,6 +94,9 @@
      ```
    - `--smoke-test` 또는 `--query` 같은 비대화형 실행은 작업 실패 시 exit code `1`을 반환합니다.
    - 최종 Writer 응답이 없거나 비어 있는 경우도 실패로 처리합니다.
+   - 기존 `--llm-call-delay-seconds`는 `--min-api-delay`의 별칭이며, `MIN_API_DELAY_SECONDS`가 없으면 `OPENROUTER_LLM_CALL_DELAY_SECONDS`도 사용합니다.
+   - 수동 API 점검: `uv run python -m scripts.check_openrouter_api` 또는 `uv run python -m scripts.check_openrouter_structured_output`.
+   - `TITANIC_DB_PATH`는 실행 전 DB 점검과 SQL 워커 모두에 적용됩니다.
 
 ### 추적과 오프라인 실행
 - 추적은 기본적으로 꺼져 있습니다. `LANGCHAIN_TRACING_V2=true` 또는 `LANGSMITH_TRACING_V2=true`로 켤 수 있습니다.
@@ -93,7 +106,7 @@
 - 단위·통합 테스트는 추적을 끄고 실행하므로 `.env`의 설정과 관계없이 외부 추적 요청을 보내지 않습니다.
 
 ### 현재 검증 상태
-- `.venv/bin/python -m pytest -q` 기준 24개 테스트 통과 (2026-10-15)
+- `.venv/bin/python -m pytest -q` 기준 32개 테스트 통과 (2026-10-15)
 - 무료 라우터로 실제 Titanic SQL 분석 → Writer 요약 → FINISH 검증: 여성 314명 중 233명 생존, 생존율 74.2%
 - `uv run main.py --smoke-test`로 비대화형 1회 실행 가능
 - 실행 시작 시 `titanic.db`와 `titanic` 테이블을 preflight로 확인
@@ -108,3 +121,9 @@
 - **SQLAlchemy**: 데이터베이스 관리 및 SQL 분석 엔진.
 - **Pytest**: 시스템의 안정성 검증을 위한 테스트 프레임워크.
 - **uv**: 현대적이고 빠른 Python 패키지 관리 도구.
+
+## 개발 메모
+- Supervisor 노드는 전역 인스턴스 없이 그래프별로 주입됩니다.
+- 워커 노드는 입력 `AgentState`를 직접 수정하지 않고, 갱신할 partial state를 반환합니다.
+- `TITANIC_DB_PATH`를 사용해 테스트/로컬 DB 경로를 분리할 수 있습니다.
+- `setup_db.py`는 `--csv-url`, `--db-path`, `--table-name` 옵션을 지원하며 실패 시 non-zero exit code를 반환합니다.

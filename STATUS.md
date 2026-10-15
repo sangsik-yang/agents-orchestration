@@ -19,10 +19,10 @@
 - **Tracing fallback**: 추적 endpoint 연결 실패 시 추적 없이 실행 지속. 새 환경 설정 예시는 추적을 기본 비활성화.
 - **OpenRouter content 정규화**: Supervisor가 문자열 또는 리스트 형태의 모델 출력을 JSON 파싱 가능한 텍스트로 정규화.
 - **SQLQueryer 에이전트**: SQLite 기반 Titanic 데이터셋을 분석하는 전용 워커.
-- **테스트 환경**: `pytest` 기준 24개 테스트 통과. 테스트 실행은 외부 추적 비활성화.
+- **테스트 환경**: `pytest` 기준 32개 테스트 통과. 테스트 실행은 외부 추적 비활성화.
 
 ### 최근 검증 결과 (2026-10-15)
-- `.venv/bin/python -m pytest -q`: `24 passed`.
+- `.venv/bin/python -m pytest -q`: `32 passed`.
 - 실제 무료 라우터 호출로 Supervisor → SQLQueryer → Supervisor → Writer → Supervisor → FINISH 성공, exit code `0`.
 - 여성 314명 중 233명 생존, 생존율 74.2%. 읽기 전용 SQLite 직접 조회 결과와 일치.
 - 기존 기본 모델 `openai/gpt-oss-120b:free`는 실제 API에서 무료 제공 종료 404 반환. 기본값과 환경 설정 예시를 `openrouter/free`로 교체.
@@ -32,6 +32,7 @@
 
 ### 프로젝트 구조
 - `main.py`: 실시간 스트리밍 루프 및 LangGraph 워크플로우 실행 엔트리 포인트.
+- `config.py`: OpenRouter, LLM throttle, Titanic DB 경로 설정 모듈.
 - `logger.py`: 중앙 집중식 컬러 로깅 시스템 모듈.
 - `setup_db.py`: Titanic 데이터셋 다운로드 및 SQLite DB 생성 스크립트.
 - `state.py`: 전역 `AgentState` 정의 (메시지, 공유 데이터, 에러 상태 포함).
@@ -41,6 +42,7 @@
   - `sql_queryer.py`: 구조화된 데이터(SQL) 분석 및 결과 공유.
   - `writer.py`: 공유 데이터를 우선 참조하여 최종 결과 합성.
 - `tests/`: 유닛 및 통합 테스트 코드.
+- `scripts/`: OpenRouter 연결 및 structured output 수동 확인 스크립트.
 
 ## 향후 계획 / 다음 단계
 - [x] LangSmith 기본 실행 정책과 시작 시 연결 실패 fallback 추가.
